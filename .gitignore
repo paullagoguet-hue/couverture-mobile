@@ -1,0 +1,16 @@
+# Pipeline de données : outils, environnements et fichiers générés (plusieurs Go)
+data-pipeline/.tools/
+data-pipeline/.venv/
+data-pipeline/work/
+data-pipeline/out/
+__pycache__/
+
+# Front
+node_modules/
+web/dist/
+web/public/tiles/
+
+# Divers
+.DS_Store
+Thumbs.db
+*.log

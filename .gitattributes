@@ -1,0 +1,7 @@
+# Fins de ligne LF pour tout le texte (les scripts shell tournent sous Linux,
+# un CRLF introduit sous Windows les casserait).
+* text=auto eol=lf
+*.sh text eol=lf
+*.pmtiles binary
+*.gpkg binary
+*.7z binary

@@ -1,0 +1,118 @@
+# Construit les tuiles PMTiles de couverture mobile à partir de l'open data Arcep.
+#
+# Lancement manuel : onglet Actions > « Données de couverture » > Run workflow.
+# Une tâche par couche (matrice) : chaque tâche a son propre disque, ce qui
+# évite de saturer les ~14 Go garantis d'un runner avec 19 couches.
+name: Données de couverture
+
+on:
+  workflow_dispatch:
+    inputs:
+      layers:
+        description: "Couches (ids séparés par des espaces, ex. « orange-4g sfr-5g ») ; vide = toutes"
+        required: false
+        default: "orange-4g"
+      max_zoom:
+        description: "Zoom maximum des tuiles"
+        required: false
+        default: "12"
+      tippecanoe_extra:
+        description: "Options tippecanoe supplémentaires (expérimentation)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-data
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    name: Recherche des fichiers Arcep
+    runs-on: ubuntu-24.04
+    outputs:
+      layers: ${{ steps.plan.outputs.layers }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        env:
+          LAYERS: ${{ inputs.layers }}
+        run: |
+          # $LAYERS non quoté volontairement : une couche par argument.
+          python3 data-pipeline/discover.py --out manifest.json $LAYERS
+          echo "layers=$(jq -c '[.layers[].id]' manifest.json)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manifest
+          path: manifest.json
+
+  build:
+    name: Tuiles ${{ matrix.layer }}
+    needs: discover
+    if: needs.discover.outputs.layers != '[]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        layer: ${{ fromJSON(needs.discover.outputs.layers) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache des outils compilés (tippecanoe, pmtiles)
+        uses: actions/cache@v4
+        with:
+          path: data-pipeline/.tools
+          key: tools-ubuntu-24.04-${{ hashFiles('data-pipeline/env.sh') }}
+
+      - name: Dépendances
+        run: bash data-pipeline/install_deps.sh
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: manifest
+          path: ${{ runner.temp }}/manifest
+
+      - name: Choix du disque de travail
+        run: |
+          # Le runner a deux disques (/ et /mnt) : on travaille sur le plus libre.
+          df -h / /mnt
+          if [ "$(df --output=avail /mnt | tail -1)" -gt "$(df --output=avail "$RUNNER_TEMP" | tail -1)" ]; then
+            sudo mkdir -p /mnt/work && sudo chown "$USER" /mnt/work
+            echo "WORK_DIR=/mnt/work" >> "$GITHUB_ENV"
+          else
+            echo "WORK_DIR=$RUNNER_TEMP/work" >> "$GITHUB_ENV"
+          fi
+
+      - name: Construction de la couche
+        env:
+          LAYER: ${{ matrix.layer }}
+          MANIFEST: ${{ runner.temp }}/manifest/manifest.json
+          TILES_DIR: ${{ github.workspace }}/tiles
+          KEEP_RAW: "0"
+          MAX_ZOOM: ${{ inputs.max_zoom }}
+          TIPPECANOE_EXTRA: ${{ inputs.tippecanoe_extra }}
+        run: bash data-pipeline/build_layer.sh "$LAYER"
+
+      - name: Résumé
+        env:
+          LAYER: ${{ matrix.layer }}
+        run: |
+          {
+            echo "### $LAYER — $(jq -r .file_mb tiles/$LAYER.stats.json) Mo"
+            echo "Source : \`$(jq -c .features_by_level tiles/$LAYER.source.json)\`"
+            echo
+            echo "| zoom | tuiles | total (Mo) | moy. (Ko) | p95 (Ko) | max (Ko) |"
+            echo "|---:|---:|---:|---:|---:|---:|"
+            jq -r '.by_zoom | to_entries[] | "| \(.key) | \(.value.tiles) | \(.value.total_kb / 1024 * 10 | round / 10) | \(.value.avg_kb) | \(.value.p95_kb) | \(.value.max_kb) |"' tiles/$LAYER.stats.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tiles-${{ matrix.layer }}
+          path: tiles/
+          compression-level: 0  # PMTiles déjà compressé
+          retention-days: 7
