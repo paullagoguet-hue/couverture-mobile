@@ -20,12 +20,18 @@ on:
         description: "Options tippecanoe supplémentaires (expérimentation)"
         required: false
         default: ""
+      makevalid:
+        description: "Réparer les géométries avec GEOS (ogr2ogr -makevalid)"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
+# Deux runs sur des réglages différents peuvent tourner en parallèle ;
+# un run identique attend la fin du précédent.
 concurrency:
-  group: build-data
+  group: build-data-${{ inputs.layers }}-${{ inputs.max_zoom }}-${{ inputs.makevalid }}-${{ inputs.tippecanoe_extra }}
   cancel-in-progress: false
 
 jobs:
@@ -35,7 +41,7 @@ jobs:
     outputs:
       layers: ${{ steps.plan.outputs.layers }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: plan
         env:
           LAYERS: ${{ inputs.layers }}
@@ -43,7 +49,7 @@ jobs:
           # $LAYERS non quoté volontairement : une couche par argument.
           python3 data-pipeline/discover.py --out manifest.json $LAYERS
           echo "layers=$(jq -c '[.layers[].id]' manifest.json)" >> "$GITHUB_OUTPUT"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: manifest
           path: manifest.json
@@ -60,10 +66,10 @@ jobs:
       matrix:
         layer: ${{ fromJSON(needs.discover.outputs.layers) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Cache des outils compilés (tippecanoe, pmtiles)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: data-pipeline/.tools
           key: tools-ubuntu-24.04-${{ hashFiles('data-pipeline/env.sh') }}
@@ -71,7 +77,7 @@ jobs:
       - name: Dépendances
         run: bash data-pipeline/install_deps.sh
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: manifest
           path: ${{ runner.temp }}/manifest
@@ -93,6 +99,7 @@ jobs:
           MANIFEST: ${{ runner.temp }}/manifest/manifest.json
           TILES_DIR: ${{ github.workspace }}/tiles
           KEEP_RAW: "0"
+          MAKEVALID: ${{ inputs.makevalid && '1' || '0' }}
           MAX_ZOOM: ${{ inputs.max_zoom }}
           TIPPECANOE_EXTRA: ${{ inputs.tippecanoe_extra }}
         run: bash data-pipeline/build_layer.sh "$LAYER"
@@ -110,7 +117,7 @@ jobs:
             jq -r '.by_zoom | to_entries[] | "| \(.key) | \(.value.tiles) | \(.value.total_kb / 1024 * 10 | round / 10) | \(.value.avg_kb) | \(.value.p95_kb) | \(.value.max_kb) |"' tiles/$LAYER.stats.json
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: tiles-${{ matrix.layer }}
           path: tiles/

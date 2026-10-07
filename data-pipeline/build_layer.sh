@@ -11,6 +11,8 @@
 #   MIN_ZOOM / MAX_ZOOM   plage de zoom des tuiles (défaut 4 / 12 ; MapLibre
 #                         sur-zoome au-delà du zoom max)
 #   TIPPECANOE_EXTRA      options supplémentaires passées à tippecanoe
+#   MAKEVALID=0           saute la réparation GEOS des géométries (coûteuse sur
+#                         les très gros polygones départementaux)
 #   KEEP_RAW=0            supprime l'archive téléchargée après usage
 #   KEEP_WORK=1           conserve les fichiers intermédiaires (debug)
 set -euo pipefail
@@ -21,6 +23,7 @@ MIN_ZOOM=${MIN_ZOOM:-4}
 MAX_ZOOM=${MAX_ZOOM:-12}
 KEEP_RAW=${KEEP_RAW:-1}
 KEEP_WORK=${KEEP_WORK:-0}
+MAKEVALID=${MAKEVALID:-1}
 
 [ -f "$MANIFEST" ] || die "manifeste introuvable ($MANIFEST), lancer discover.py"
 layer_json=$(jq -c --arg id "$LAYER" '.layers[] | select(.id == $id)' "$MANIFEST")
@@ -68,15 +71,16 @@ log "[$LAYER] $(jq -c .features_by_level "$TILES_DIR/$LAYER.source.json")"
 #  - -explodecollections découpe les multipolygones départementaux (jusqu'à
 #    ~9 Mo pièce) en polygones simples, beaucoup plus efficaces pour tippecanoe.
 #  - 6 décimales ≈ 10 cm, largement sous la précision de la donnée.
-log "[$LAYER] reprojection EPSG:2154 -> EPSG:4326"
+makevalid_opt=(); [ "$MAKEVALID" = 1 ] && makevalid_opt=(-makevalid)
+log "[$LAYER] reprojection EPSG:2154 -> EPSG:4326 (makevalid=$MAKEVALID)"
 geojsons="$layer_work/$LAYER.geojsons"
 ogr2ogr -f GeoJSONSeq "$geojsons" "$gpkg" \
   -sql "SELECT \"$geom_col\", NULLIF(niveau, '') AS niveau FROM \"$table\"" \
   -s_srs EPSG:2154 -t_srs EPSG:4326 \
-  -makevalid -explodecollections \
+  "${makevalid_opt[@]}" -explodecollections \
   -lco COORDINATE_PRECISION=6
 [ "$KEEP_WORK" = 1 ] || rm -f "$gpkg"
-log "[$LAYER] $(wc -l < "$geojsons") polygones, $(du -h "$geojsons" | cut -f1)"
+log "[$LAYER] $(wc -l < "$geojsons") polygones, $(du -h "$geojsons" | cut -f1) (étape terminée à ${SECONDS} s)"
 
 # --- 5. Tuilage vectoriel.
 #  - une seule couche « couverture » par fichier : le front utilise le même
@@ -99,6 +103,8 @@ tippecanoe -o "$TILES_DIR/$LAYER.pmtiles" --force --quiet \
   --attribution='<a href="https://www.arcep.fr/cartes-et-donnees.html">© Arcep — Mon Réseau Mobile</a>' \
   ${TIPPECANOE_EXTRA:-} \
   "$geojsons"
+
+log "[$LAYER] tippecanoe terminé à ${SECONDS} s"
 
 # --- 6. Vérification et statistiques.
 pmtiles verify "$TILES_DIR/$LAYER.pmtiles" >&2
