@@ -9,6 +9,7 @@ Usage : python3 tile_stats.py <fichier.pmtiles>   (dépendance : pip install pmt
 """
 
 import json
+import math
 import os
 import sys
 from collections import defaultdict
@@ -32,7 +33,7 @@ def main():
             "tiles": len(s),
             "total_kb": round(sum(s) / 1024),
             "avg_kb": round(sum(s) / len(s) / 1024, 1),
-            "p95_kb": round(s[int(0.95 * (len(s) - 1))] / 1024, 1),
+            "p95_kb": round(s[math.ceil(0.95 * len(s)) - 1] / 1024, 1),  # rang le plus proche
             "max_kb": round(s[-1] / 1024, 1),
         }
 

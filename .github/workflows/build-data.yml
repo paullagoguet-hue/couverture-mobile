@@ -12,10 +12,22 @@ on:
         description: "Couches (ids séparés par des espaces, ex. « orange-4g sfr-5g ») ; vide = toutes"
         required: false
         default: "orange-4g"
+      min_zoom:
+        description: "Zoom minimum des tuiles"
+        required: false
+        default: "4"
       max_zoom:
         description: "Zoom maximum des tuiles"
         required: false
         default: "12"
+      tippecanoe_opts:
+        description: "Options de généralisation tippecanoe (vide = défaut de build_layer.sh)"
+        required: false
+        default: ""
+      timeout_minutes:
+        description: "Durée max d'une couche (min)"
+        required: false
+        default: "240"
       tippecanoe_extra:
         description: "Options tippecanoe supplémentaires (expérimentation)"
         required: false
@@ -31,7 +43,7 @@ permissions:
 # Deux runs sur des réglages différents peuvent tourner en parallèle ;
 # un run identique attend la fin du précédent.
 concurrency:
-  group: build-data-${{ inputs.layers }}-${{ inputs.max_zoom }}-${{ inputs.makevalid }}-${{ inputs.tippecanoe_extra }}
+  group: build-data-${{ inputs.layers }}-${{ inputs.min_zoom }}-${{ inputs.max_zoom }}-${{ inputs.makevalid }}-${{ inputs.tippecanoe_opts }}-${{ inputs.tippecanoe_extra }}
   cancel-in-progress: false
 
 jobs:
@@ -59,7 +71,7 @@ jobs:
     needs: discover
     if: needs.discover.outputs.layers != '[]'
     runs-on: ubuntu-24.04
-    timeout-minutes: 240
+    timeout-minutes: ${{ fromJSON(inputs.timeout_minutes) }}
     strategy:
       fail-fast: false
       max-parallel: 8
@@ -100,7 +112,9 @@ jobs:
           TILES_DIR: ${{ github.workspace }}/tiles
           KEEP_RAW: "0"
           MAKEVALID: ${{ inputs.makevalid && '1' || '0' }}
+          MIN_ZOOM: ${{ inputs.min_zoom }}
           MAX_ZOOM: ${{ inputs.max_zoom }}
+          TIPPECANOE_OPTS: ${{ inputs.tippecanoe_opts }}
           TIPPECANOE_EXTRA: ${{ inputs.tippecanoe_extra }}
         run: bash data-pipeline/build_layer.sh "$LAYER"
 

@@ -10,6 +10,7 @@
 # Réglages (variables d'environnement) :
 #   MIN_ZOOM / MAX_ZOOM   plage de zoom des tuiles (défaut 4 / 12 ; MapLibre
 #                         sur-zoome au-delà du zoom max)
+#   TIPPECANOE_OPTS       options de généralisation tippecanoe (défaut ci-dessous)
 #   TIPPECANOE_EXTRA      options supplémentaires passées à tippecanoe
 #   MAKEVALID=0           saute la réparation GEOS des géométries (coûteuse sur
 #                         les très gros polygones départementaux)
@@ -24,6 +25,8 @@ MAX_ZOOM=${MAX_ZOOM:-12}
 KEEP_RAW=${KEEP_RAW:-1}
 KEEP_WORK=${KEEP_WORK:-0}
 MAKEVALID=${MAKEVALID:-1}
+TIPPECANOE_OPTS=${TIPPECANOE_OPTS:---no-simplification-of-shared-nodes --drop-smallest-as-needed}
+[ "$TIPPECANOE_OPTS" = none ] && TIPPECANOE_OPTS=""  # « none » : aucune option de généralisation
 
 [ -f "$MANIFEST" ] || die "manifeste introuvable ($MANIFEST), lancer discover.py"
 layer_json=$(jq -c --arg id "$LAYER" '.layers[] | select(.id == $id)' "$MANIFEST")
@@ -90,14 +93,14 @@ log "[$LAYER] $(wc -l < "$geojsons") polygones, $(du -h "$geojsons" | cut -f1) (
 #    communes identiques pour éviter trous et chevauchements aux bas zooms ;
 #  - --drop-smallest-as-needed : si une tuile dépasse 500 Ko, on sacrifie
 #    les plus petits îlots plutôt que de déformer les grandes zones.
-log "[$LAYER] tippecanoe z$MIN_ZOOM-z$MAX_ZOOM"
+#  - --progress-interval : une ligne de progression par minute dans les logs.
+log "[$LAYER] tippecanoe z$MIN_ZOOM-z$MAX_ZOOM ($TIPPECANOE_OPTS $TIPPECANOE_EXTRA)"
 # shellcheck disable=SC2086
-tippecanoe -o "$TILES_DIR/$LAYER.pmtiles" --force --quiet \
+tippecanoe -o "$TILES_DIR/$LAYER.pmtiles" --force --progress-interval=60 \
   --layer=couverture --include=niveau \
   --minimum-zoom="$MIN_ZOOM" --maximum-zoom="$MAX_ZOOM" \
   --read-parallel --temporary-directory="$layer_work" \
-  --no-simplification-of-shared-nodes \
-  --drop-smallest-as-needed \
+  $TIPPECANOE_OPTS \
   --name="Couverture mobile théorique — $label" \
   --description="$(field .quarter) ($(field .date)), source Arcep / Mon Réseau Mobile" \
   --attribution='<a href="https://www.arcep.fr/cartes-et-donnees.html">© Arcep — Mon Réseau Mobile</a>' \
