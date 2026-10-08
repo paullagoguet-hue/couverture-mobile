@@ -35,7 +35,7 @@ XMIN, YMIN, XMAX, YMAX = 50_000, 6_030_000, 1_250_000, 7_130_000
 ARRONDISSEMENTS = "code BETWEEN '75101' AND '75120' OR code BETWEEN '69381' AND '69389' OR code BETWEEN '13201' AND '13216'"
 
 
-def prepare_communes(cache: Path) -> tuple[Path, list[tuple[str, str]]]:
+def prepare_communes(cache: Path) -> tuple[Path, str, list[tuple[str, str]]]:
     """Télécharge (une fois) les communes, les passe en Lambert-93 et les numérote."""
     cache.mkdir(parents=True, exist_ok=True)
     gz = cache / "communes-50m.geojson.gz"
@@ -52,12 +52,14 @@ def prepare_communes(cache: Path) -> tuple[Path, list[tuple[str, str]]]:
         )
     ds = ogr.Open(str(gpkg))
     layer = ds.GetLayer("communes")
+    # Noms des colonnes géométrie et identifiant tels que créés par GDAL (pas de supposition).
+    sql = f'SELECT "{layer.GetGeometryColumn()}", "{layer.GetFIDColumn() or "fid"}" AS v FROM communes'
     # Index = FID (1..N, 0 = hors commune) ; on garde la correspondance FID -> code.
     codes = {f.GetFID(): (f.GetField("code"), f.GetField("nom")) for f in layer}
     if not 30_000 < len(codes) < 36_000:
         sys.exit(f"Nombre de communes inattendu : {len(codes)}")
     max_fid = max(codes)
-    return gpkg, [codes.get(i, ("", "")) for i in range(max_fid + 1)]
+    return gpkg, sql, [codes.get(i, ("", "")) for i in range(max_fid + 1)]
 
 
 def rasterize(dst: Path, src: str, sql: str, output_type: int):
@@ -72,11 +74,11 @@ def rasterize(dst: Path, src: str, sql: str, output_type: int):
 def main():
     cover_gpkg, table, geom_col, out_csv, cache = sys.argv[1:6]
     cache = Path(cache)
-    communes_gpkg, codes = prepare_communes(cache)
+    communes_gpkg, communes_sql, codes = prepare_communes(cache)
 
     communes_tif = cache / "communes.tif"
     if not communes_tif.exists():
-        rasterize(communes_tif, str(communes_gpkg), "SELECT geom, fid AS v FROM communes", gdal.GDT_Int32)
+        rasterize(communes_tif, str(communes_gpkg), communes_sql, gdal.GDT_Int32)
 
     # Couverture : 3 = TBC (ou couvert sans niveau), 2 = BC, 1 = CL, 0 = rien.
     # Le GeoPackage Arcep déclare un SRS « maison » équivalent à Lambert-93 :

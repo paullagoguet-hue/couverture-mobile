@@ -90,7 +90,10 @@ export function pointsAround(lng: number, lat: number, radiusM: number): [number
 
 /** Répartition de la couverture sur une zone (points d'échantillonnage). */
 export interface AreaStats {
-  radiusM: number;
+  /** Cercle autour d'un point approximatif, ou territoire d'une commune. */
+  kind: 'circle' | 'commune';
+  radiusM?: number;
+  /** Nombre de points échantillonnés (cercle) ; 0 pour une commune (calcul exhaustif). */
   samples: number;
   /** Part des points par niveau : « TBC », « BC », « CL », « covered » (sans niveau), « none ». */
   shares: Record<string, number>;
@@ -173,7 +176,7 @@ export class CoverageReader {
       layer,
       covered: dominant !== 'none',
       level: dominant === 'none' || dominant === 'covered' ? null : (dominant as LevelCode),
-      area: { radiusM, samples: results.length, shares },
+      area: { kind: 'circle', radiusM, samples: results.length, shares },
     };
   }
 

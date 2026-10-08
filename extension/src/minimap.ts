@@ -56,7 +56,7 @@ export class MiniMap {
   }
 
   /** Centre la carte sur le point et y affiche la couche demandée. */
-  async show(layer: LayerInfo, lng: number, lat: number) {
+  async show(layer: LayerInfo, lng: number, lat: number, zoom = 13) {
     await this.ready;
     const map = this.map;
     if (!map.getSource(layer.id)) {
@@ -79,8 +79,8 @@ export class MiniMap {
     this.shownLayer = layer.id;
 
     this.marker.setLngLat([lng, lat]).addTo(map);
-    // Zoom 13 : quartier / village, au-dessus du zoom mini des tuiles 4G (z10).
-    map.jumpTo({ center: [lng, lat], zoom: Math.max(13, layer.tiles.minzoom ?? 0) });
+    // Zoom 13 : quartier / village ; 11 : commune. Jamais sous le zoom mini des tuiles.
+    map.jumpTo({ center: [lng, lat], zoom: Math.max(zoom, layer.tiles.minzoom ?? 0) });
   }
 
   /** Le panneau peut changer de taille : MapLibre doit recalculer son canevas. */

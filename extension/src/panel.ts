@@ -9,11 +9,13 @@
 import {
   bestOperators,
   cleanAddress,
+  communeToCoverage,
   COVERED_COLOR,
   CoverageReader,
   geocode,
   isUnambiguous,
   levelInfo,
+  loadCommuneCoverage,
   loadManifest,
   summarizeByOperator,
   type GeocodeResult,
@@ -92,7 +94,14 @@ async function showCoverage(place: GeocodeResult, runSignal: AbortSignal) {
   try {
     manifestPromise ??= loadManifest(TILES_BASE_URL, fetch, signal);
     const manifest = await manifestPromise;
-    const coverage = await reader.query(manifest.layers, place.lng, place.lat, signal, areaRadius);
+    // Commune sans adresse précise : parts de surface précalculées sur tout son
+    // territoire si elles sont publiées, sinon couverture au point central.
+    const commune = place.type === 'municipality' && place.citycode
+      ? await loadCommuneCoverage(TILES_BASE_URL, place.citycode, signal)
+      : null;
+    const coverage = commune
+      ? communeToCoverage(manifest.layers, commune)
+      : await reader.query(manifest.layers, place.lng, place.lat, signal, areaRadius);
     renderCoverage(place, manifest, coverage);
   } catch (err) {
     // Ne pas garder en cache un échec (même interrompu) : le prochain essai repart de zéro.
@@ -116,6 +125,20 @@ const shareLabel = (key: string) =>
 /** Contenu d'une case : pastille de couleur + libellé (jamais la couleur seule). */
 function cell(c: LayerCoverage | undefined): { color: string; label: string; title: string } {
   if (!c) return { color: 'transparent', label: 'n.d.', title: 'Donnée non disponible' };
+  if (c.area?.kind === 'commune') {
+    // Commune : part de la surface couverte + barre empilée par niveau.
+    const pct = (v: number) => `${Math.round(v * 100)} %`;
+    const parts = Object.entries(c.area.shares).filter(([k, v]) => k !== 'none' && v > 0);
+    const total = parts.reduce((s, [, v]) => s + v, 0);
+    const bar = parts
+      .map(([k, v]) => `<span style="width:${(v * 100).toFixed(1)}%;background:${levelInfo(k)?.color ?? COVERED_COLOR}"></span>`)
+      .join('');
+    return {
+      color: 'transparent',
+      label: `<span class="bar">${bar}</span>${pct(total)}`,
+      title: `Part de la surface de la commune : ${[...parts, ['none', c.area.shares.none ?? 0] as const].map(([k, v]) => `${shareLabel(k)} ${pct(v)}`).join(', ')}`,
+    };
+  }
   if (c.area) {
     // Zone : niveau dominant + sa part, répartition complète au survol.
     const entries = Object.entries(c.area.shares).sort((a, b) => b[1] - a[1]);
@@ -149,7 +172,7 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
           const c = cell(s.byTechno[t]);
           const layer = s.byTechno[t]?.layer;
           return `<td><button class="cell" data-layer="${layer?.id ?? ''}" title="${escapeHtml(c.title)}"${layer ? '' : ' disabled'}>
-              <span class="swatch" style="background:${c.color}"></span>${c.label}</button></td>`;
+              ${c.color !== 'transparent' ? `<span class="swatch" style="background:${c.color}"></span>` : ''}${c.label}</button></td>`;
         })
         .join('');
       const isBest = bestIds.has(s.operator);
@@ -172,10 +195,14 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
 
   show(`
     <h2>${escapeHtml(place.label)}</h2>
-    ${place.type === 'municipality' && !sourceNote // le bandeau de la page le dit déjà
+    ${place.type === 'municipality' && !sourceNote && coverage[0]?.area?.kind !== 'commune' // le bandeau de la page le dit déjà
       ? '<p class="warning">Commune sans adresse précise : couverture au point central de la commune, elle peut varier ailleurs sur son territoire.</p>'
       : ''}
-    ${coverage[0]?.area ? `<p class="area-note">Couverture évaluée dans un rayon de ${coverage[0].area.radiusM} m autour de l'emplacement indiqué (${coverage[0].area.samples} points) : chaque case donne le niveau le plus fréquent et sa part.</p>` : ''}
+    ${coverage[0]?.area?.kind === 'commune'
+      ? `<p class="area-note">Part de la surface de la commune couverte, calculée sur tout son territoire (carte Arcep à 50 m). Survolez une case pour le détail par niveau.</p>`
+      : coverage[0]?.area
+        ? `<p class="area-note">Couverture évaluée dans un rayon de ${coverage[0].area.radiusM} m autour de l'emplacement indiqué (${coverage[0].area.samples} points) : chaque case donne le niveau le plus fréquent et sa part.</p>`
+        : ''}
     <p class="best-text">${bestText}</p>
     <table class="coverage">
       <colgroup><col class="op" />${technos.map(() => '<col />').join('')}</colgroup>
@@ -202,7 +229,7 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
     url.searchParams.set('techno', layer.techno);
     url.hash = `15/${place.lat.toFixed(5)}/${place.lng.toFixed(5)}`;
     (document.getElementById('full-map') as HTMLAnchorElement).href = url.href;
-    void miniMap.show(layer, place.lng, place.lat);
+    void miniMap.show(layer, place.lng, place.lat, coverage[0]?.area?.kind === 'commune' ? 11 : 13);
   };
   out.querySelectorAll<HTMLButtonElement>('.cell').forEach((b) => b.addEventListener('click', () => select(b.dataset.layer!)));
 
@@ -262,7 +289,7 @@ function handlePending(p: PendingQuery) {
       approximate:
         `<br /><strong>Emplacement approximatif</strong> : ce site ne publie pas l'adresse exacte (souvent communiquée après réservation), la couverture est donc évaluée dans un rayon de ${APPROX_RADIUS_M} m.`,
       commune:
-        '<br /><strong>Commune seulement</strong> : ce site ne publie pas l\x27adresse du bien, la couverture est indiquée pour le centre de la commune.',
+        "<br /><strong>Commune seulement</strong> : ce site ne publie pas l'adresse du bien, la couverture est donc donnée pour l'ensemble de la commune.",
     }[p.precision ?? 'exact'];
     const note = `${p.precision === 'exact' ? 'Adresse' : 'Localisation'} lue sur la page : ${what}${precisionNote}`;
     const radius = p.precision === 'approximate' ? APPROX_RADIUS_M : undefined;
