@@ -17,7 +17,10 @@ import { extractStructuredAddress, isLodgingUrl, LODGING_MATCHES, LODGING_SITES 
 const MENU_SELECTION = 'verifier-couverture';
 const MENU_PAGE = 'verifier-hebergement';
 
-api.runtime.onInstalled.addListener(() => {
+api.runtime.onInstalled.addListener(async () => {
+  // À la mise à jour (ou au rechargement en développement), les entrées existent
+  // déjà : on repart de zéro pour éviter les erreurs d'identifiant en double.
+  await api.contextMenus.removeAll();
   api.contextMenus.create({
     id: MENU_SELECTION,
     title: 'Vérifier la couverture réseau',
