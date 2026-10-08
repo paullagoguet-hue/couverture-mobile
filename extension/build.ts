@@ -81,7 +81,13 @@ for (const [target, manifest] of Object.entries(manifests)) {
     root,
     base: './',
     logLevel: 'warn',
-    build: { outDir, emptyOutDir: true, rollupOptions: { input: resolve(root, 'panel.html') } },
+    build: {
+      outDir,
+      emptyOutDir: true,
+      rollupOptions: { input: resolve(root, 'panel.html') },
+      // MapLibre (~1 Mo) est chargé depuis le paquet de l'extension, pas par le réseau.
+      chunkSizeWarningLimit: 1500,
+    },
   });
 
   // Arrière-plan : un seul fichier sans import (script classique, valable comme

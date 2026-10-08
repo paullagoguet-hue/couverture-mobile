@@ -3,6 +3,7 @@ import './style.css';
 
 import {
   COVERED_COLOR,
+  FILL_COLOR_EXPRESSION,
   LEVELS,
   levelInfo,
   loadManifest,
@@ -37,16 +38,8 @@ setWorkerUrl(maplibreWorkerUrl);
 const protocol = new Protocol();
 addProtocol('pmtiles', protocol.tile);
 
-/** Couleur de remplissage selon l'attribut `niveau` (absent pour 3G et 5G). */
-const [TBC, BC, CL] = LEVELS;
-const FILL_COLOR: ExpressionSpecification = [
-  'match',
-  ['get', 'niveau'],
-  TBC.code, TBC.color,
-  BC.code, BC.color,
-  CL.code, CL.color,
-  COVERED_COLOR,
-];
+/** Couleur de remplissage selon l'attribut `niveau` (légende partagée avec l'extension). */
+const FILL_COLOR = FILL_COLOR_EXPRESSION as unknown as ExpressionSpecification;
 
 const tilesBase = new URL(TILES_BASE_URL, location.href).href;
 const fillId = (layer: LayerInfo) => `${layer.id}-fill`;

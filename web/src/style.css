@@ -85,12 +85,15 @@ body {
 .selects label {
   display: flex;
   flex: 1;
+  min-width: 0; /* autorise les menus à rétrécir dans un panneau étroit */
   flex-direction: column;
   gap: 4px;
   font-weight: 600;
 }
 
 .selects select {
+  width: 100%;
+  min-width: 0;
   font: inherit;
   font-weight: 400;
   padding: 4px;

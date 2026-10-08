@@ -1,16 +1,20 @@
 /**
- * Panneau latéral (étape 3 : résultat en texte brut).
+ * Panneau latéral : couverture des opérateurs à l'adresse sélectionnée.
  *
  * Reçoit le texte sélectionné via storage.session (déposé par background.ts),
- * le géocode, puis lit la couverture des couches au point trouvé.
+ * le géocode, lit la couverture des couches au point trouvé, puis affiche un
+ * tableau opérateurs × technos, le meilleur opérateur et une mini-carte.
  * Hors extension (tests), la requête peut être passée en paramètre : panel.html?q=…
  */
 import {
+  bestOperators,
+  COVERED_COLOR,
   CoverageReader,
   geocode,
   isUnambiguous,
   levelInfo,
   loadManifest,
+  summarizeByOperator,
   type GeocodeResult,
   type LayerCoverage,
   type Manifest,
@@ -18,14 +22,15 @@ import {
 
 import { api, PENDING_KEY, type PendingQuery } from './browser.ts';
 import { DISCLAIMER, SITE_URL, TILES_BASE_URL } from './config.ts';
+import { MiniMap } from './minimap.ts';
 
 const out = document.getElementById('result')!;
 let reader = new CoverageReader(TILES_BASE_URL);
+let manifestPromise: Promise<Manifest> | undefined;
+let currentRun: AbortController | undefined;
 
 /** Délai max pour lire la couverture (manifeste + tuiles des 8 couches). */
 const COVERAGE_TIMEOUT_MS = 20_000;
-let manifestPromise: Promise<Manifest> | undefined;
-let currentRun: AbortController | undefined;
 
 const escapeHtml = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -41,7 +46,7 @@ function show(html: string) {
 async function run(text: string) {
   currentRun?.abort();
   const run = (currentRun = new AbortController());
-  show(`<p>Recherche de « ${escapeHtml(text)} »…</p>`);
+  show(`<p class="status">Recherche de « ${escapeHtml(text)} »…</p>`);
   try {
     const results = await geocode(text, { limit: 5, signal: run.signal });
     if (!results.length) {
@@ -53,7 +58,7 @@ async function run(text: string) {
     // Plusieurs lieux plausibles : l'utilisateur choisit.
     show(`<p>Plusieurs lieux correspondent à « ${escapeHtml(text)} » :</p>
           <ul class="choices">${results
-            .map((r, i) => `<li><button data-i="${i}">${escapeHtml(r.label)}</button><br /><small>${escapeHtml(r.context)}</small></li>`)
+            .map((r, i) => `<li><button data-i="${i}">${escapeHtml(r.label)}<small>${escapeHtml(r.context)}</small></button></li>`)
             .join('')}</ul>`);
     out.querySelectorAll<HTMLButtonElement>('.choices button').forEach((b) =>
       b.addEventListener('click', () => showCoverage(results[Number(b.dataset.i)], run.signal)),
@@ -69,7 +74,7 @@ async function run(text: string) {
 
 /** Lit et affiche la couverture ; affiche une erreur claire plutôt que de rester bloqué. */
 async function showCoverage(place: GeocodeResult, runSignal: AbortSignal) {
-  show(`<p>Lecture de la couverture à ${escapeHtml(place.label)}…</p>`);
+  show(`<p class="status">Lecture de la couverture à ${escapeHtml(place.label)}…</p>`);
   const signal = AbortSignal.any([runSignal, AbortSignal.timeout(COVERAGE_TIMEOUT_MS)]);
   try {
     manifestPromise ??= loadManifest(TILES_BASE_URL, fetch, signal);
@@ -91,34 +96,98 @@ async function showCoverage(place: GeocodeResult, runSignal: AbortSignal) {
   }
 }
 
+/** Contenu d'une case : pastille de couleur + libellé (jamais la couleur seule). */
+function cell(c: LayerCoverage | undefined): { color: string; label: string; title: string } {
+  if (!c) return { color: 'transparent', label: 'n.d.', title: 'Donnée non disponible' };
+  if (!c.covered) return { color: 'var(--none)', label: 'Non couvert', title: 'Pas de couverture théorique à cet endroit' };
+  const level = levelInfo(c.level);
+  if (level) return { color: level.color, label: level.short, title: `${level.label} : ${level.description}` };
+  return { color: COVERED_COLOR, label: 'Couvert', title: 'Zone couverte (pas de niveau de qualité publié)' };
+}
+
 function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: LayerCoverage[]) {
-  // Une ligne par opérateur : « 4G : Très bonne couverture · 5G : non couvert ».
-  const byOperator = new Map<string, LayerCoverage[]>();
-  for (const c of coverage) byOperator.set(c.layer.operator_label, [...(byOperator.get(c.layer.operator_label) ?? []), c]);
-  const describe = (c: LayerCoverage) =>
-    `${c.layer.techno.toUpperCase()} : ${!c.covered ? 'non couvert' : (levelInfo(c.level)?.label ?? 'couvert')}`;
-  const lines = [...byOperator]
-    .map(([op, cs]) => `<li><strong>${escapeHtml(op)}</strong> — ${cs.sort((a, b) => a.layer.techno.localeCompare(b.layer.techno)).map(describe).join(' · ')}</li>`)
+  const summaries = summarizeByOperator(coverage);
+  const best = bestOperators(summaries);
+  const bestIds = new Set(best.map((b) => b.operator));
+  const technos = [...new Set(manifest.layers.map((l) => l.techno))].sort();
+
+  const rows = summaries
+    .map((s) => {
+      const cells = technos
+        .map((t) => {
+          const c = cell(s.byTechno[t]);
+          const layer = s.byTechno[t]?.layer;
+          return `<td><button class="cell" data-layer="${layer?.id ?? ''}" title="${escapeHtml(c.title)}"${layer ? '' : ' disabled'}>
+              <span class="swatch" style="background:${c.color}"></span>${c.label}</button></td>`;
+        })
+        .join('');
+      const isBest = bestIds.has(s.operator);
+      return `<tr${isBest ? ' class="best"' : ''}><th scope="row">${escapeHtml(s.operatorLabel)}${isBest ? '<span class="badge">★ meilleur</span>' : ''}</th>${cells}</tr>`;
+    })
     .join('');
 
-  // Dates des données par techno (la 5G et la 4G ne sont pas publiées au même trimestre).
-  const dates = [...new Map(manifest.layers.map((l) => [l.techno, l.date]))]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([t, d]) => `${t.toUpperCase()} au ${formatDate(d)}`)
-    .join(', ');
+  const bestText = !best.length
+    ? 'Aucun opérateur ne couvre cet endroit en 4G ou 5G.'
+    : best.length === 1
+      ? `Meilleure couverture ici : <strong>${escapeHtml(best[0].operatorLabel)}</strong>`
+      : `Meilleure couverture ici (ex æquo) : <strong>${best.map((b) => escapeHtml(b.operatorLabel)).join(', ')}</strong>`;
 
-  const mapUrl = new URL(SITE_URL);
-  mapUrl.searchParams.set('techno', '4g');
-  mapUrl.hash = `15/${place.lat.toFixed(5)}/${place.lng.toFixed(5)}`;
+  // Dates des données par techno (la 5G et la 4G ne sont pas publiées au même trimestre).
+  const dates = technos
+    .map((t) => `${t.toUpperCase()} au ${formatDate(manifest.layers.find((l) => l.techno === t)!.date)}`)
+    .join(', ');
 
   show(`
     <h2>${escapeHtml(place.label)}</h2>
     ${place.type === 'municipality'
       ? '<p class="warning">Commune sans adresse précise : couverture au point central de la commune, elle peut varier ailleurs sur son territoire.</p>'
       : ''}
-    <ul class="coverage">${lines}</ul>
+    <p class="best-text">${bestText}</p>
+    <table class="coverage">
+      <colgroup><col class="op" />${technos.map(() => '<col />').join('')}</colgroup>
+      <thead><tr><th></th>${technos.map((t) => `<th scope="col">${t.toUpperCase()}</th>`).join('')}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p class="map-caption">Carte : <strong id="map-layer"></strong> <small>— cliquez une case pour changer</small></p>
+    <div id="minimap-slot"></div>
+    <p class="note">La 5G publiée par l'Arcep ne distingue pas les bandes de fréquences : la bande 700 MHz porte loin
+      mais offre un débit proche de la 4G, la bande 3,5 GHz est bien plus rapide mais de faible portée.</p>
     <p class="source">${DISCLAIMER} (données ${dates}).</p>
-    <p><a href="${mapUrl.href}" target="_blank" rel="noopener">Voir sur la carte complète</a></p>`);
+    <p><a id="full-map" target="_blank" rel="noopener">Voir sur la carte complète</a></p>`);
+
+  const miniMap = attachMiniMap(document.getElementById('minimap-slot')!);
+
+  // Case sélectionnée = couche affichée sur la mini-carte et sur la carte complète.
+  const select = (layerId: string) => {
+    const layer = manifest.layers.find((l) => l.id === layerId);
+    if (!layer) return;
+    out.querySelectorAll<HTMLElement>('.cell').forEach((b) => b.classList.toggle('selected', b.dataset.layer === layerId));
+    document.getElementById('map-layer')!.textContent = `${layer.operator_label} ${layer.techno.toUpperCase()}`;
+    const url = new URL(SITE_URL);
+    url.searchParams.set('operateur', layer.operator);
+    url.searchParams.set('techno', layer.techno);
+    url.hash = `15/${place.lat.toFixed(5)}/${place.lng.toFixed(5)}`;
+    (document.getElementById('full-map') as HTMLAnchorElement).href = url.href;
+    void miniMap.show(layer, place.lng, place.lat);
+  };
+  out.querySelectorAll<HTMLButtonElement>('.cell').forEach((b) => b.addEventListener('click', () => select(b.dataset.layer!)));
+
+  // Par défaut : la 4G du meilleur opérateur (ou du premier).
+  const defaultOp = best[0] ?? summaries[0];
+  select((defaultOp.byTechno['4g'] ?? defaultOp.byTechno[technos[0]]).layer.id);
+}
+
+/**
+ * La mini-carte est créée une seule fois (MapLibre coûte cher à initialiser) ;
+ * son conteneur est déplacé dans chaque nouveau résultat.
+ */
+let miniMap: MiniMap | undefined;
+const mapContainer = Object.assign(document.createElement('div'), { id: 'minimap' });
+function attachMiniMap(slot: HTMLElement): MiniMap {
+  slot.replaceWith(mapContainer);
+  miniMap ??= new MiniMap(mapContainer);
+  miniMap.resize();
+  return miniMap;
 }
 
 // --- Réception des requêtes -------------------------------------------------
