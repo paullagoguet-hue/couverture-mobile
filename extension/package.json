@@ -1,7 +1,7 @@
 {
   "name": "@couverture/extension",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Extension navigateur « Vérifier la couverture réseau » (Chrome/Edge et Firefox, Manifest V3)",
   "type": "module",
   "scripts": {

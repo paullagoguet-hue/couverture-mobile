@@ -13,14 +13,6 @@ import { FetchSource, PMTiles, type Source } from 'pmtiles';
 import { levelRank, type LevelCode } from './levels.ts';
 import { SOURCE_LAYER, type LayerInfo } from './manifest.ts';
 
-export interface LayerCoverage {
-  layer: LayerInfo;
-  /** Point dans une zone couverte. */
-  covered: boolean;
-  /** Niveau Arcep (couches à niveaux uniquement). */
-  level: LevelCode | null;
-}
-
 /** Tuile (x, y) et position du point dans la tuile, en unités de l'extent MVT. */
 export function pointToTile(lng: number, lat: number, z: number, extent: number) {
   const n = 2 ** z;
@@ -47,18 +39,24 @@ export function pointInRings(px: number, py: number, rings: { x: number; y: numb
   return inside;
 }
 
-/** Décode une tuile MVT et renvoie le niveau au point (ou undefined si non couvert). */
-export function coverageInTile(data: ArrayBuffer, px: number, py: number): { covered: boolean; level: LevelCode | null } {
-  const layer = new VectorTile(new PbfReader(new Uint8Array(data))).layers[SOURCE_LAYER];
+type TileLayer = NonNullable<VectorTile['layers'][string]>;
+
+/** Décode une tuile MVT et renvoie la couche de couverture (null si absente). */
+export function decodeTile(data: ArrayBuffer): TileLayer | null {
+  return new VectorTile(new PbfReader(new Uint8Array(data))).layers[SOURCE_LAYER] ?? null;
+}
+
+/** Niveau au point (px, py), en unités d'extent 4096, dans une couche décodée. */
+export function pointCoverage(layer: TileLayer | null, px: number, py: number): { covered: boolean; level: LevelCode | null } {
   if (!layer) return { covered: false, level: null };
   // L'extent annoncé par la couche fait foi (4096 par défaut avec tippecanoe).
   const scale = layer.extent / 4096;
+  const qx = px * scale, qy = py * scale;
   let best: { covered: boolean; level: LevelCode | null } = { covered: false, level: null };
   for (let i = 0; i < layer.length; i++) {
     const f = layer.feature(i);
     if (f.type !== 3) continue;
     const [x0, y0, x1, y1] = f.bbox();
-    const qx = px * scale, qy = py * scale;
     if (qx < x0 || qx > x1 || qy < y0 || qy > y1) continue;
     if (!pointInRings(qx, qy, f.loadGeometry())) continue;
     const level = (f.properties.niveau as LevelCode | undefined) ?? null;
@@ -66,6 +64,46 @@ export function coverageInTile(data: ArrayBuffer, px: number, py: number): { cov
     if (!best.covered || levelRank(level) < levelRank(best.level)) best = { covered: true, level };
   }
   return best;
+}
+
+/** Décode une tuile MVT et renvoie le niveau au point. */
+export function coverageInTile(data: ArrayBuffer, px: number, py: number) {
+  return pointCoverage(decodeTile(data), px, py);
+}
+
+/**
+ * Points d'échantillonnage dans un cercle : centre + 6 points à mi-rayon +
+ * 12 points sur le cercle (19 points, répartis à peu près uniformément).
+ */
+export function pointsAround(lng: number, lat: number, radiusM: number): [number, number][] {
+  const mPerDegLat = 111_320;
+  const mPerDegLng = mPerDegLat * Math.cos((lat * Math.PI) / 180);
+  const pts: [number, number][] = [[lng, lat]];
+  for (const [r, n] of [[radiusM / 2, 6], [radiusM, 12]] as const) {
+    for (let i = 0; i < n; i++) {
+      const a = (2 * Math.PI * i) / n;
+      pts.push([lng + (r * Math.cos(a)) / mPerDegLng, lat + (r * Math.sin(a)) / mPerDegLat]);
+    }
+  }
+  return pts;
+}
+
+/** Répartition de la couverture sur une zone (points d'échantillonnage). */
+export interface AreaStats {
+  radiusM: number;
+  samples: number;
+  /** Part des points par niveau : « TBC », « BC », « CL », « covered » (sans niveau), « none ». */
+  shares: Record<string, number>;
+}
+
+export interface LayerCoverage {
+  layer: LayerInfo;
+  /** Point couvert (zone : niveau dominant couvert). */
+  covered: boolean;
+  /** Niveau Arcep (couches à niveaux) ; pour une zone, le niveau dominant. */
+  level: LevelCode | null;
+  /** Présent quand la couverture a été évaluée sur une zone et non en un point. */
+  area?: AreaStats;
 }
 
 /** Lecteur de couverture pour un ensemble de couches ; garde les en-têtes PMTiles en cache. */
@@ -92,20 +130,57 @@ export class CoverageReader {
     return a;
   }
 
-  /** Couverture d'une couche au point (lng, lat), lue au zoom max de la couche. */
-  async queryLayer(layer: LayerInfo, lng: number, lat: number, signal?: AbortSignal): Promise<LayerCoverage> {
+  /** Niveau en plusieurs points d'une couche ; chaque tuile n'est lue et décodée qu'une fois. */
+  private async layerPoints(layer: LayerInfo, points: [number, number][], signal?: AbortSignal) {
     const archive = this.archive(layer);
-    const header = await archive.getHeader();
-    const z = header.maxZoom;
-    const { x, y, px, py } = pointToTile(lng, lat, z, 4096);
-    const tile = await archive.getZxy(z, x, y, signal);
-    // Pas de tuile = aucune couverture dans ce carré (tippecanoe n'écrit pas les tuiles vides).
-    if (!tile) return { layer, covered: false, level: null };
-    return { layer, ...coverageInTile(tile.data, px, py) };
+    const z = (await archive.getHeader()).maxZoom;
+    const tiles = new Map<string, Promise<TileLayer | null>>();
+    return Promise.all(
+      points.map(async ([lng, lat]) => {
+        const { x, y, px, py } = pointToTile(lng, lat, z, 4096);
+        const key = `${x}/${y}`;
+        if (!tiles.has(key)) {
+          // Pas de tuile = aucune couverture dans ce carré (tippecanoe n'écrit pas les tuiles vides).
+          tiles.set(key, archive.getZxy(z, x, y, signal).then((t) => (t ? decodeTile(t.data) : null)));
+        }
+        return pointCoverage(await tiles.get(key)!, px, py);
+      }),
+    );
   }
 
-  /** Toutes les couches en parallèle. */
-  query(layers: LayerInfo[], lng: number, lat: number, signal?: AbortSignal): Promise<LayerCoverage[]> {
-    return Promise.all(layers.map((l) => this.queryLayer(l, lng, lat, signal)));
+  /** Couverture d'une couche au point (lng, lat), lue au zoom max de la couche. */
+  async queryLayer(layer: LayerInfo, lng: number, lat: number, signal?: AbortSignal): Promise<LayerCoverage> {
+    const [c] = await this.layerPoints(layer, [[lng, lat]], signal);
+    return { layer, ...c };
+  }
+
+  /**
+   * Couverture d'une couche dans un cercle autour du point : répartition par
+   * niveau et niveau dominant (utile quand l'emplacement est approximatif).
+   */
+  async queryLayerArea(layer: LayerInfo, lng: number, lat: number, radiusM: number, signal?: AbortSignal): Promise<LayerCoverage> {
+    const results = await this.layerPoints(layer, pointsAround(lng, lat, radiusM), signal);
+    const counts: Record<string, number> = {};
+    for (const r of results) {
+      const key = !r.covered ? 'none' : (r.level ?? 'covered');
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    const shares = Object.fromEntries(Object.entries(counts).map(([k, n]) => [k, n / results.length]));
+    // Niveau dominant ; à égalité, le meilleur (l'ordre TBC > BC > CL > covered > none).
+    const order = ['TBC', 'BC', 'CL', 'covered', 'none'];
+    const dominant = order.reduce((a, b) => ((counts[b] ?? 0) > (counts[a] ?? 0) ? b : a));
+    return {
+      layer,
+      covered: dominant !== 'none',
+      level: dominant === 'none' || dominant === 'covered' ? null : (dominant as LevelCode),
+      area: { radiusM, samples: results.length, shares },
+    };
+  }
+
+  /** Toutes les couches en parallèle, au point ou (si radiusM) dans un cercle. */
+  query(layers: LayerInfo[], lng: number, lat: number, signal?: AbortSignal, radiusM?: number): Promise<LayerCoverage[]> {
+    return Promise.all(
+      layers.map((l) => (radiusM ? this.queryLayerArea(l, lng, lat, radiusM, signal) : this.queryLayer(l, lng, lat, signal))),
+    );
   }
 }

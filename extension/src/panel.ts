@@ -44,13 +44,18 @@ const formatDate = (iso: string) =>
 /** Bandeau affiché au-dessus du résultat (ex. « Adresse lue sur la page : … »), HTML déjà échappé. */
 let sourceNote = '';
 
+/** Emplacement approximatif : couverture évaluée dans ce rayon (m) plutôt qu'en un point. */
+let areaRadius: number | undefined;
+const APPROX_RADIUS_M = 300;
+
 function show(html: string) {
   out.innerHTML = (sourceNote ? `<p class="from-page">${sourceNote}</p>` : '') + html;
 }
 
 /** Point d'entrée : un texte sélectionné, saisi ou lu sur la page. */
-async function run(text: string, note = '') {
+async function run(text: string, note = '', radiusM?: number) {
   sourceNote = note;
+  areaRadius = radiusM;
   search.setText(text);
   currentRun?.abort();
   const run = (currentRun = new AbortController());
@@ -87,7 +92,7 @@ async function showCoverage(place: GeocodeResult, runSignal: AbortSignal) {
   try {
     manifestPromise ??= loadManifest(TILES_BASE_URL, fetch, signal);
     const manifest = await manifestPromise;
-    const coverage = await reader.query(manifest.layers, place.lng, place.lat, signal);
+    const coverage = await reader.query(manifest.layers, place.lng, place.lat, signal, areaRadius);
     renderCoverage(place, manifest, coverage);
   } catch (err) {
     // Ne pas garder en cache un échec (même interrompu) : le prochain essai repart de zéro.
@@ -104,9 +109,25 @@ async function showCoverage(place: GeocodeResult, runSignal: AbortSignal) {
   }
 }
 
+/** Libellé court d'une clé de répartition (« TBC », « covered », « none »…). */
+const shareLabel = (key: string) =>
+  levelInfo(key)?.short ?? (key === 'covered' ? 'Couvert' : 'Non couvert');
+
 /** Contenu d'une case : pastille de couleur + libellé (jamais la couleur seule). */
 function cell(c: LayerCoverage | undefined): { color: string; label: string; title: string } {
   if (!c) return { color: 'transparent', label: 'n.d.', title: 'Donnée non disponible' };
+  if (c.area) {
+    // Zone : niveau dominant + sa part, répartition complète au survol.
+    const entries = Object.entries(c.area.shares).sort((a, b) => b[1] - a[1]);
+    const [dominant, share] = entries[0];
+    const pct = (v: number) => `${Math.round(v * 100)} %`;
+    const color = levelInfo(dominant)?.color ?? (dominant === 'covered' ? COVERED_COLOR : 'var(--none)');
+    return {
+      color,
+      label: share < 1 ? `${shareLabel(dominant)} · ${pct(share)}` : shareLabel(dominant),
+      title: `Dans un rayon de ${c.area.radiusM} m : ${entries.map(([k, v]) => `${shareLabel(k)} ${pct(v)}`).join(', ')}`,
+    };
+  }
   if (!c.covered) return { color: 'var(--none)', label: 'Non couvert', title: 'Pas de couverture théorique à cet endroit' };
   const level = levelInfo(c.level);
   if (level) return { color: level.color, label: level.short, title: `${level.label} : ${level.description}` };
@@ -154,6 +175,7 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
     ${place.type === 'municipality' && !sourceNote // le bandeau de la page le dit déjà
       ? '<p class="warning">Commune sans adresse précise : couverture au point central de la commune, elle peut varier ailleurs sur son territoire.</p>'
       : ''}
+    ${coverage[0]?.area ? `<p class="area-note">Couverture évaluée dans un rayon de ${coverage[0].area.radiusM} m autour de l'emplacement indiqué (${coverage[0].area.samples} points) : chaque case donne le niveau le plus fréquent et sa part.</p>` : ''}
     <p class="best-text">${bestText}</p>
     <table class="coverage">
       <colgroup><col class="op" />${technos.map(() => '<col />').join('')}</colgroup>
@@ -209,6 +231,7 @@ const search = new SearchBox(document.getElementById('search') as HTMLFormElemen
   onSubmit: (text) => void run(text),
   onPick: (place) => {
     sourceNote = '';
+    areaRadius = undefined;
     currentRun?.abort();
     const ctrl = (currentRun = new AbortController());
     void showCoverage(place, ctrl.signal);
@@ -237,21 +260,23 @@ function handlePending(p: PendingQuery) {
     const precisionNote = {
       exact: '',
       approximate:
-        '<br /><strong>Emplacement approximatif</strong> : ce site ne publie pas l\x27adresse exacte (souvent communiquée après réservation), la couverture peut varier aux alentours.',
+        `<br /><strong>Emplacement approximatif</strong> : ce site ne publie pas l'adresse exacte (souvent communiquée après réservation), la couverture est donc évaluée dans un rayon de ${APPROX_RADIUS_M} m.`,
       commune:
         '<br /><strong>Commune seulement</strong> : ce site ne publie pas l\x27adresse du bien, la couverture est indiquée pour le centre de la commune.',
     }[p.precision ?? 'exact'];
     const note = `${p.precision === 'exact' ? 'Adresse' : 'Localisation'} lue sur la page : ${what}${precisionNote}`;
+    const radius = p.precision === 'approximate' ? APPROX_RADIUS_M : undefined;
     if (p.lat !== undefined && p.lng !== undefined) {
       // Coordonnées publiées par la page : pas besoin de géocoder.
       sourceNote = note;
+      areaRadius = radius;
       search.setText(p.address ?? p.name ?? '');
       currentRun?.abort();
       const ctrl = (currentRun = new AbortController());
       const label = p.address ?? p.name ?? `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
       void showCoverage({ label, type: 'housenumber', score: 1, lng: p.lng, lat: p.lat, citycode: '', city: '', context: '' }, ctrl.signal);
     } else {
-      void run(cleanAddress(p.address!), note);
+      void run(cleanAddress(p.address!), note, radius);
     }
   }
 }
