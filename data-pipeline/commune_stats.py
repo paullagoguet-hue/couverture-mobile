@@ -53,7 +53,8 @@ def prepare_communes(cache: Path) -> tuple[Path, str, list[tuple[str, str]]]:
     ds = ogr.Open(str(gpkg))
     layer = ds.GetLayer("communes")
     # Noms des colonnes géométrie et identifiant tels que créés par GDAL (pas de supposition).
-    sql = f'SELECT "{layer.GetGeometryColumn()}", "{layer.GetFIDColumn() or "fid"}" AS v FROM communes'
+    # « fid + 0 » : un simple alias serait traité comme identifiant, pas comme champ à rastériser.
+    sql = f'SELECT "{layer.GetGeometryColumn()}", "{layer.GetFIDColumn() or "fid"}" + 0 AS v FROM communes'
     # Index = FID (1..N, 0 = hors commune) ; on garde la correspondance FID -> code.
     codes = {f.GetFID(): (f.GetField("code"), f.GetField("nom")) for f in layer}
     if not 30_000 < len(codes) < 36_000:
