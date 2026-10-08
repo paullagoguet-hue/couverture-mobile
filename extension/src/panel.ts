@@ -233,7 +233,9 @@ function handlePending(p: PendingQuery) {
   } else {
     // Adresse lue sur la page : on l'affiche pour que l'utilisateur puisse la vérifier.
     const what = [p.name, p.address].filter(Boolean).map((s) => escapeHtml(s!)).join(' — ');
-    const note = `Adresse lue sur la page : ${what}`;
+    const note = p.approximate
+      ? `Emplacement lu sur la page : ${what}<br /><strong>Emplacement approximatif</strong> : ce site ne publie pas l'adresse exacte (souvent communiquée après réservation), la couverture peut varier aux alentours.`
+      : `Adresse lue sur la page : ${what}`;
     if (p.lat !== undefined && p.lng !== undefined) {
       // Coordonnées publiées par la page : pas besoin de géocoder.
       sourceNote = note;

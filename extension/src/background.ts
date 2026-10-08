@@ -12,7 +12,7 @@
  */
 import { api, pageAction, PENDING_KEY, sidebarAction, type PendingBody } from './browser.ts';
 import { ICON_SIZES, iconPixels } from './icon.ts';
-import { extractStructuredAddress, isLodgingUrl, LODGING_MATCHES, LODGING_SITES } from './lodging.ts';
+import { extractStructuredAddress, isLodgingUrl, LODGING_MATCHES, LODGING_RULES, LODGING_SITES } from './lodging.ts';
 import type { CheckPageMessage, CheckPageResponse } from './messages.ts';
 
 const MENU_SELECTION = 'verifier-couverture';
@@ -30,7 +30,7 @@ api.runtime.onInstalled.addListener(async () => {
   // N'apparaît que sur les pages d'hébergement reconnues (filtrage fait par le navigateur).
   api.contextMenus.create({
     id: MENU_PAGE,
-    title: 'Vérifier la connexion de cet hébergement',
+    title: 'Vérifier la connexion de ce logement',
     contexts: ['page'],
     documentUrlPatterns: LODGING_MATCHES,
   });
@@ -91,7 +91,7 @@ async function checkLodgingPage(tab: chrome.tabs.Tab) {
     const [injection] = await api.scripting.executeScript({
       target: { tabId: tab.id },
       func: extractStructuredAddress,
-      args: [LODGING_SITES.map(({ hostSuffix, pathPrefix }) => ({ hostSuffix, pathPrefix }))],
+      args: [LODGING_RULES],
     });
     found = injection?.result;
   } catch (err) {

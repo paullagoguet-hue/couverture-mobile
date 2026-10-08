@@ -12,7 +12,7 @@
  * - Shadow DOM fermé : styles et code isolés de ceux du site.
  */
 import { api } from './browser.ts';
-import { extractStructuredAddress, LODGING_SITES } from './lodging.ts';
+import { extractStructuredAddress, LODGING_RULES } from './lodging.ts';
 import { CARD_DISABLED_KEY, type CheckPageMessage, type CheckPageResponse } from './messages.ts';
 
 const HOST_ID = 'verifier-couverture-reseau-carte';
@@ -62,7 +62,7 @@ async function showCard() {
     <aside class="card" role="complementary" aria-label="Vérifier la couverture réseau">
       ${ICON_SVG}
       <div>
-        <p class="title">Vérifier la connexion mobile de cet hébergement ?</p>
+        <p class="title">Vérifier la connexion mobile de ce logement ?</p>
         <div class="actions">
           <button class="check" type="button">Vérifier</button>
           <button class="never" type="button">Ne plus proposer</button>
@@ -84,7 +84,7 @@ async function showCard() {
 
   check.addEventListener('click', async () => {
     // Lecture de l'adresse seulement maintenant, au clic de l'utilisateur.
-    const found = extractStructuredAddress(LODGING_SITES);
+    const found = extractStructuredAddress(LODGING_RULES);
     check.disabled = true;
     msg.textContent = '';
     const message: CheckPageMessage = { type: 'check-lodging-page', found };

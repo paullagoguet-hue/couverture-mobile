@@ -94,7 +94,7 @@ const manifests = {
     permissions: basePermissions,
     background: { scripts: ['background.js'] },
     // Icône dans la barre d'adresse, affichée par Firefox sur les seules pages d'hébergement.
-    page_action: { default_title: 'Vérifier la connexion de cet hébergement', default_icon: detectedIcons, show_matches: LODGING_MATCHES },
+    page_action: { default_title: 'Vérifier la connexion de ce logement', default_icon: detectedIcons, show_matches: LODGING_MATCHES },
     sidebar_action: { default_panel: 'panel.html', default_title: 'Vérifier la couverture réseau', open_at_install: false },
     browser_specific_settings: {
       gecko: { id: '{7c3e9a52-4b1d-4f0e-9d8a-2f6b1e5c0a13}', strict_min_version: '128.0' },
