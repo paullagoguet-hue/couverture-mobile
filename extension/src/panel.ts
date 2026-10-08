@@ -218,6 +218,12 @@ const search = new SearchBox(document.getElementById('search') as HTMLFormElemen
 function handlePending(p: PendingQuery) {
   if (p.kind === 'selection') {
     void run(p.text);
+  } else if (p.kind === 'not-lodging-page') {
+    sourceNote = '';
+    show(`<p><strong>Ouvrez la page de l'hébergement.</strong></p>
+          <p>Cette page (par exemple une liste de résultats) ne correspond pas à un établissement précis.
+          Cliquez sur le nom de l'hébergement : sa page s'ouvre, souvent dans un nouvel onglet, et l'icône
+          de l'extension devient orange. Cliquez alors de nouveau sur l'icône.</p>`);
   } else if (p.kind === 'page-error') {
     sourceNote = '';
     show(`<p><strong>Aucune adresse lisible sur cette page.</strong></p>

@@ -89,7 +89,11 @@ async function checkLodgingPage(tab: chrome.tabs.Tab) {
     console.debug('Lecture de la page impossible :', err);
     return;
   }
-  if (found?.notLodging) return; // pas une page d'hébergement : le panneau propose la saisie
+  if (found?.notLodging) {
+    // Liste de résultats du site : expliquer quoi faire ; ailleurs, simple saisie.
+    if (found.sameSite) sendToPanel({ kind: 'not-lodging-page' });
+    return;
+  }
   sendToPanel(found ? { kind: 'page', ...found } : { kind: 'page-error' });
 }
 

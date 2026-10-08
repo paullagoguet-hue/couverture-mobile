@@ -41,6 +41,8 @@ export function isLodgingUrl(url: string | undefined): boolean {
 export interface PageAddress {
   /** La page n'est pas une page d'hébergement reconnue : rien n'a été lu. */
   notLodging?: true;
+  /** …mais c'est le même site (ex. liste de résultats) : le panneau explique quoi faire. */
+  sameSite?: boolean;
   name?: string;
   address?: string;
   lat?: number;
@@ -56,10 +58,10 @@ export interface PageAddress {
  */
 export function extractStructuredAddress(sites: { hostSuffix: string; pathPrefix: string }[]): PageAddress | null {
   const host = location.hostname;
-  const isLodging = sites.some(
-    (s) => (host === s.hostSuffix || host.endsWith(`.${s.hostSuffix}`)) && location.pathname.startsWith(s.pathPrefix),
-  );
-  if (!isLodging) return { notLodging: true };
+  const onSite = sites.filter((s) => host === s.hostSuffix || host.endsWith(`.${s.hostSuffix}`));
+  if (!onSite.some((s) => location.pathname.startsWith(s.pathPrefix))) {
+    return { notLodging: true, sameSite: onSite.length > 0 }; // seule l'adresse de la page a été regardée
+  }
 
   const found: Record<string, unknown>[] = [];
   const visit = (node: unknown, depth: number) => {
