@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vérifier la couverture réseau</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 12px 14px;
+        font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        color: #1d2327;
+        background: #fff;
+      }
+      h1 { font-size: 15px; margin: 0 0 10px; }
+      h2 { font-size: 15px; margin: 0 0 8px; }
+      ul { padding-left: 18px; }
+      .choices { list-style: none; padding: 0; }
+      .choices li { margin-bottom: 8px; }
+      .choices button { font: inherit; text-align: left; cursor: pointer; }
+      .warning { background: #fff4d6; padding: 6px 8px; border-radius: 4px; }
+      .source { color: #5b6770; font-size: 12px; }
+      .error { color: #b3261e; }
+    </style>
+  </head>
+  <body>
+    <h1>Vérifier la couverture réseau</h1>
+    <div id="result">
+      <p>Sélectionnez une adresse ou un nom de commune sur une page, puis faites un clic droit
+        et choisissez « Vérifier la couverture réseau ».</p>
+    </div>
+    <script type="module" src="./src/panel.ts"></script>
+  </body>
+</html>

@@ -4,7 +4,8 @@
   "description": "Carte de couverture mobile théorique (open data Arcep) : site web et extension navigateur",
   "workspaces": [
     "packages/*",
-    "web"
+    "web",
+    "extension"
   ],
   "engines": {
     "node": ">=24"
