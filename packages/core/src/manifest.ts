@@ -24,8 +24,8 @@ export interface Manifest {
 /** Nom de la couche vectorielle dans chaque PMTiles (cf. build_layer.sh). */
 export const SOURCE_LAYER = 'couverture';
 
-export async function loadManifest(baseUrl: string, fetchFn: typeof fetch = fetch): Promise<Manifest> {
-  const resp = await fetchFn(new URL('manifest.json', baseUrl));
+export async function loadManifest(baseUrl: string, fetchFn: typeof fetch = fetch, signal?: AbortSignal): Promise<Manifest> {
+  const resp = await fetchFn(new URL('manifest.json', baseUrl), { signal });
   if (!resp.ok) throw new Error(`manifest.json introuvable (${resp.status})`);
   return resp.json();
 }

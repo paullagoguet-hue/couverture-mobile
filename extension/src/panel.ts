@@ -20,7 +20,10 @@ import { api, PENDING_KEY, type PendingQuery } from './browser.ts';
 import { DISCLAIMER, SITE_URL, TILES_BASE_URL } from './config.ts';
 
 const out = document.getElementById('result')!;
-const reader = new CoverageReader(TILES_BASE_URL);
+let reader = new CoverageReader(TILES_BASE_URL);
+
+/** Délai max pour lire la couverture (manifeste + tuiles des 8 couches). */
+const COVERAGE_TIMEOUT_MS = 20_000;
 let manifestPromise: Promise<Manifest> | undefined;
 let currentRun: AbortController | undefined;
 
@@ -62,13 +65,31 @@ async function run(text: string) {
   }
 }
 
-async function showCoverage(place: GeocodeResult, signal: AbortSignal) {
+/** Lit et affiche la couverture ; affiche une erreur claire plutôt que de rester bloqué. */
+async function showCoverage(place: GeocodeResult, runSignal: AbortSignal) {
   show(`<p>Lecture de la couverture à ${escapeHtml(place.label)}…</p>`);
-  manifestPromise ??= loadManifest(TILES_BASE_URL);
-  const manifest = await manifestPromise;
-  const coverage = await reader.query(manifest.layers, place.lng, place.lat, signal);
-  if (signal.aborted) return;
+  const signal = AbortSignal.any([runSignal, AbortSignal.timeout(COVERAGE_TIMEOUT_MS)]);
+  try {
+    manifestPromise ??= loadManifest(TILES_BASE_URL, fetch, signal);
+    const manifest = await manifestPromise;
+    const coverage = await reader.query(manifest.layers, place.lng, place.lat, signal);
+    renderCoverage(place, manifest, coverage);
+  } catch (err) {
+    // Ne pas garder en cache un échec (même interrompu) : le prochain essai repart de zéro.
+    manifestPromise = undefined;
+    reader = new CoverageReader(TILES_BASE_URL);
+    if (runSignal.aborted) return; // remplacé par une recherche plus récente
+    console.error(err);
+    const timedOut = signal.aborted;
+    show(`<p class="error"><strong>Impossible de lire la couverture.</strong><br />
+      ${timedOut ? `Le serveur des cartes ne répond pas (délai de ${COVERAGE_TIMEOUT_MS / 1000} s dépassé).` : `Le serveur des cartes est injoignable.`}</p>
+      <p class="source">Serveur : ${escapeHtml(new URL(TILES_BASE_URL).origin)}</p>
+      <p><button id="retry">Réessayer</button></p>`);
+    out.querySelector('#retry')!.addEventListener('click', () => showCoverage(place, runSignal));
+  }
+}
 
+function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: LayerCoverage[]) {
   // Une ligne par opérateur : « 4G : Très bonne couverture · 5G : non couvert ».
   const byOperator = new Map<string, LayerCoverage[]>();
   for (const c of coverage) byOperator.set(c.layer.operator_label, [...(byOperator.get(c.layer.operator_label) ?? []), c]);
