@@ -15,7 +15,7 @@ check() {
     command -v "$cmd" >/dev/null || { log "manquant : $cmd"; missing=1; }
   done
   "$PY" -c 'import pmtiles' 2>/dev/null || { log "manquant : module Python pmtiles"; missing=1; }
-  "$PY" -c 'import numpy; from osgeo import gdal' 2>/dev/null || { log "manquant : GDAL Python / NumPy"; missing=1; }
+  "$PY" -c 'import numpy, pyproj; from osgeo import gdal' 2>/dev/null || { log "manquant : GDAL Python / NumPy / pyproj"; missing=1; }
   return $missing
 }
 
@@ -32,7 +32,7 @@ SUDO=; [ "$(id -u)" -eq 0 ] || SUDO=sudo
 log "Paquets système"
 $SUDO apt-get update -qq
 $SUDO apt-get install -y -qq --no-install-recommends \
-  gdal-bin python3-gdal python3-numpy p7zip-full jq curl ca-certificates python3 python3-venv \
+  gdal-bin python3-gdal python3-numpy python3-pyproj p7zip-full jq curl ca-certificates python3 python3-venv \
   build-essential libsqlite3-dev zlib1g-dev
 
 mkdir -p "$TOOLS_DIR/bin"

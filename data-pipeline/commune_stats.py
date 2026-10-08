@@ -11,21 +11,33 @@ EXPRESS, IGN), version simplifiée à 50 m, Licence Ouverte. Arrondissements
 municipaux (Paris, Lyon, Marseille) et DROM exclus : la commune entière suffit
 et le périmètre est la métropole.
 
+Population : Insee, Filosofi 2019, données carroyées à 200 m (variable « ind »,
+y compris valeurs imputées), Licence Ouverte. Chaque carreau est réparti sur
+16 points de 50 m, projetés en Lambert-93 : on compte ainsi les HABITANTS
+couverts, pas seulement la surface (les sommets et forêts vides ne pèsent rien).
+
 Usage : python3 commune_stats.py <couverture.gpkg> <table> <colonne_geom> <sortie.csv> <dossier_cache>
-Sortie CSV : code,nom,pixels,cl,bc,tbc  (5G et autres couches sans niveau : tout en « tbc »)
+Sortie CSV : code,nom,pixels,cl,bc,tbc,pop,pop_cl,pop_bc,pop_tbc
+  (5G et autres couches sans niveau : tout en « tbc »)
 """
 
 import csv
+import re
+import subprocess
 import sys
 import urllib.request
+import zipfile
 from pathlib import Path
 
 import numpy as np
 from osgeo import gdal, ogr
+from pyproj import Transformer
 
 gdal.UseExceptions()
 
 COMMUNES_URL = "https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2026/geojson/communes-50m.geojson.gz"
+
+POPULATION_URL = "https://www.insee.fr/fr/statistiques/fichier/7655475/Filosofi2019_carreaux_200m_csv.zip"
 
 # Grille : métropole en Lambert-93, alignée sur des multiples de 50 m comme la donnée Arcep.
 RES = 50
@@ -63,6 +75,52 @@ def prepare_communes(cache: Path) -> tuple[Path, str, list[tuple[str, str]]]:
     return gpkg, sql, [codes.get(i, ("", "")) for i in range(max_fid + 1)]
 
 
+def prepare_population(cache: Path, width: int) -> tuple[np.ndarray, np.ndarray]:
+    """Habitants par pixel de 50 m : (index de pixel trié, poids), mis en cache."""
+    out = cache / "population.npz"
+    if out.exists():
+        d = np.load(out)
+        return d["idx"], d["w"]
+    csv_path = cache / "carreaux_200m_met.csv"
+    if not csv_path.exists():
+        zip_path = cache / "filosofi.zip"
+        urllib.request.urlretrieve(POPULATION_URL, zip_path)
+        with zipfile.ZipFile(zip_path) as z:  # zip -> archive 7z -> CSV
+            seven = z.extract(next(n for n in z.namelist() if n.endswith(".7z")), cache)
+        subprocess.run(["7z", "e", "-y", f"-o{cache}", seven, "carreaux_200m_met.csv"], check=True, stdout=subprocess.DEVNULL)
+
+    # Identifiant « CRS3035RES200mN2029800E4252400 » : coin sud-ouest en EPSG:3035.
+    pattern = re.compile(r"N(\d+)E(\d+)")
+    xs, ys, pops = [], [], []
+    with open(csv_path, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            m = pattern.search(row["idcar_200m"])
+            xs.append(int(m.group(2)))
+            ys.append(int(m.group(1)))
+            pops.append(float(row["ind"]))
+    x0, y0, pop = np.array(xs, float), np.array(ys, float), np.array(pops, np.float32)
+    total = float(pop.sum())
+    if not 55e6 < total < 70e6:
+        sys.exit(f"Population totale inattendue : {total:.0f}")
+
+    # 16 sous-points par carreau (centres des cases de 50 m), chacun 1/16 de la population.
+    off = 25 + 50 * np.arange(4)
+    dx, dy = np.meshgrid(off, off)
+    px = (x0[:, None] + dx.ravel()).ravel()
+    py = (y0[:, None] + dy.ravel()).ravel()
+    w = np.repeat(pop / 16, 16)
+    lx, ly = Transformer.from_crs("EPSG:3035", "EPSG:2154", always_xy=True).transform(px, py)
+    col = np.floor((lx - XMIN) / RES).astype(np.int64)
+    row = np.floor((YMAX - ly) / RES).astype(np.int64)
+    ok = (col >= 0) & (col < width) & (row >= 0) & (row < (YMAX - YMIN) // RES)
+    idx, w = row[ok] * width + col[ok], w[ok]
+    order = np.argsort(idx, kind="stable")
+    idx, w = idx[order], w[order]
+    np.savez(out, idx=idx, w=w)
+    print(f"population : {total / 1e6:.1f} M habitants, {len(x0)} carreaux", file=sys.stderr)
+    return idx, w
+
+
 def rasterize(dst: Path, src: str, sql: str, output_type: int):
     gdal.Rasterize(
         str(dst), src, format="GTiff", outputType=output_type,
@@ -96,13 +154,21 @@ def main():
     c_band, v_band = c_ds.GetRasterBand(1), v_ds.GetRasterBand(1)
     width, height = c_ds.RasterXSize, c_ds.RasterYSize
     n = len(codes)
+    pop_idx, pop_w = prepare_population(cache, width)
     counts = np.zeros(n * 4, dtype=np.int64)
+    pop_counts = np.zeros(n * 4, dtype=np.float64)
     for y in range(0, height, 512):
         rows = min(512, height - y)
         c = c_band.ReadAsArray(0, y, width, rows).astype(np.int64).ravel()
         v = v_band.ReadAsArray(0, y, width, rows).astype(np.int64).ravel()
-        counts += np.bincount(c * 4 + v, minlength=n * 4)
+        key = c * 4 + v
+        counts += np.bincount(key, minlength=n * 4)
+        # Habitants situés dans ce bloc de lignes (index triés : simple tranche).
+        lo, hi = np.searchsorted(pop_idx, [y * width, (y + rows) * width])
+        local = pop_idx[lo:hi] - y * width
+        pop_counts += np.bincount(key[local], weights=pop_w[lo:hi], minlength=n * 4)
     counts = counts.reshape(n, 4)
+    pop_counts = pop_counts.reshape(n, 4)
 
     covered_total = int(counts[1:, 1:].sum())
     if covered_total == 0:
@@ -110,13 +176,15 @@ def main():
 
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["code", "nom", "pixels", "cl", "bc", "tbc"])
+        w.writerow(["code", "nom", "pixels", "cl", "bc", "tbc", "pop", "pop_cl", "pop_bc", "pop_tbc"])
         for idx in range(1, n):
             code, nom = codes[idx]
             total = int(counts[idx].sum())
             if code and total:
-                w.writerow([code, nom, total, *map(int, counts[idx, 1:])])
-    print(f"{out_csv} : {n - 1} communes, {covered_total * RES * RES / 1e6:.0f} km² couverts", file=sys.stderr)
+                pop = pop_counts[idx]
+                w.writerow([code, nom, total, *map(int, counts[idx, 1:]), *(round(float(x), 1) for x in (pop.sum(), *pop[1:]))])
+    print(f"{out_csv} : {n - 1} communes, {covered_total * RES * RES / 1e6:.0f} km² couverts, "
+          f"{pop_counts[1:, 1:].sum() / pop_counts[1:].sum():.1%} des habitants couverts", file=sys.stderr)
 
 
 if __name__ == "__main__":
