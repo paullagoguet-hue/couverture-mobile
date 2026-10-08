@@ -69,3 +69,18 @@ export function isUnambiguous(results: GeocodeResult[], minScore = 0.6, minGap =
   if (!results.length || results[0].score < minScore) return false;
   return results.length === 1 || results[0].score - results[1].score >= minGap;
 }
+
+/**
+ * Nettoie une adresse rédigée pour des humains avant géocodage :
+ * « 39 rue Delambre, 14e arr., 75014 Paris, France » → « 39 rue Delambre, 75014 Paris »
+ * (le géocodeur la trouve alors avec un score de 0,97 au lieu de 0,60).
+ */
+export function cleanAddress(text: string): string {
+  return text
+    .replace(/\b\d{1,2}(?:e|er|ème)\s+arr(?:ondissement|\.)?/gi, '') // « 14e arr. », « 1er arrondissement »
+    .replace(/,?\s*France\s*$/i, '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(', ');
+}

@@ -8,6 +8,7 @@
  */
 import {
   bestOperators,
+  cleanAddress,
   COVERED_COLOR,
   CoverageReader,
   geocode,
@@ -39,12 +40,16 @@ const escapeHtml = (s: string) =>
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
+/** Bandeau affiché au-dessus du résultat (ex. « Adresse lue sur la page : … »), HTML déjà échappé. */
+let sourceNote = '';
+
 function show(html: string) {
-  out.innerHTML = html;
+  out.innerHTML = (sourceNote ? `<p class="from-page">${sourceNote}</p>` : '') + html;
 }
 
-/** Point d'entrée : un texte sélectionné ou saisi. */
-async function run(text: string) {
+/** Point d'entrée : un texte sélectionné, saisi ou lu sur la page. */
+async function run(text: string, note = '') {
+  sourceNote = note;
   search.setText(text);
   currentRun?.abort();
   const run = (currentRun = new AbortController());
@@ -202,29 +207,62 @@ function attachMiniMap(slot: HTMLElement): MiniMap {
 const search = new SearchBox(document.getElementById('search') as HTMLFormElement, {
   onSubmit: (text) => void run(text),
   onPick: (place) => {
+    sourceNote = '';
     currentRun?.abort();
     const ctrl = (currentRun = new AbortController());
     void showCoverage(place, ctrl.signal);
   },
 });
 
-/** Au-delà, une sélection déposée par le clic droit est considérée comme ancienne. */
+/** Traite une requête déposée par l'arrière-plan (clic droit, icône, page d'hébergement). */
+function handlePending(p: PendingQuery) {
+  if (p.kind === 'selection') {
+    void run(p.text);
+  } else if (p.kind === 'page-error') {
+    sourceNote = '';
+    show(`<p><strong>Aucune adresse lisible sur cette page.</strong></p>
+          <p>Sélectionnez l'adresse affichée sur la page puis faites un clic droit, ou tapez-la ci-dessus.</p>`);
+    search.focus();
+  } else {
+    // Adresse lue sur la page : on l'affiche pour que l'utilisateur puisse la vérifier.
+    const what = [p.name, p.address].filter(Boolean).map((s) => escapeHtml(s!)).join(' — ');
+    const note = `Adresse lue sur la page : ${what}`;
+    if (p.lat !== undefined && p.lng !== undefined) {
+      // Coordonnées publiées par la page : pas besoin de géocoder.
+      sourceNote = note;
+      search.setText(p.address ?? p.name ?? '');
+      currentRun?.abort();
+      const ctrl = (currentRun = new AbortController());
+      const label = p.address ?? p.name ?? `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+      void showCoverage({ label, type: 'housenumber', score: 1, lng: p.lng, lat: p.lat, citycode: '', city: '', context: '' }, ctrl.signal);
+    } else {
+      void run(cleanAddress(p.address!), note);
+    }
+  }
+}
+
+/** Au-delà, une requête déposée par l'arrière-plan est considérée comme ancienne. */
 const PENDING_MAX_AGE_MS = 30_000;
 
-const testQuery = new URLSearchParams(location.search).get('q');
+// Tests hors extension : panel.html?q=<texte> (sélection) ou panel.html?page=<JSON> (adresse lue sur une page).
+const params = new URLSearchParams(location.search);
+const testQuery = params.get('q');
+const testPage = params.get('page');
 if (testQuery) {
   void run(testQuery);
+} else if (testPage) {
+  handlePending({ kind: 'page', ...JSON.parse(testPage), at: Date.now() });
 } else if (api) {
-  // Requête déposée par le clic droit juste avant l'ouverture du panneau ;
+  // Requête déposée juste avant l'ouverture du panneau ;
   // sinon (ouverture par l'icône), on donne la main au champ de saisie.
   api.storage.session.get(PENDING_KEY).then((items) => {
     const p = items[PENDING_KEY] as PendingQuery | undefined;
-    if (p && Date.now() - p.at < PENDING_MAX_AGE_MS) void run(p.text);
+    if (p && Date.now() - p.at < PENDING_MAX_AGE_MS) handlePending(p);
     else search.focus();
   });
   // … ou pendant qu'il est ouvert.
   api.storage.session.onChanged.addListener((changes) => {
     const p = changes[PENDING_KEY]?.newValue as PendingQuery | undefined;
-    if (p) void run(p.text);
+    if (p) handlePending(p);
   });
 }

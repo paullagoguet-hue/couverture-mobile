@@ -16,6 +16,9 @@ import { fileURLToPath } from 'node:url';
 
 import { build, loadEnv } from 'vite';
 
+import { ICON_SIZES } from './src/icon.ts';
+import { LODGING_MATCHES } from './src/lodging.ts';
+
 const root = dirname(fileURLToPath(import.meta.url));
 const pkg = (await import('./package.json', { with: { type: 'json' } })).default;
 
@@ -43,13 +46,27 @@ const csp = [
 const isLoopback = ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(tilesBase).hostname);
 const devHostPermissions = isLoopback ? { host_permissions: [`${new URL(tilesBase).origin}/*`] } : {};
 
+const icons = Object.fromEntries(ICON_SIZES.map((s) => [s, `icons/icon-${s}.png`]));
+const detectedIcons = Object.fromEntries(ICON_SIZES.map((s) => [s, `icons/icon-${s}-detected.png`]));
+
+/**
+ * Permissions communes, toutes sans avertissement à l'installation :
+ *  - contextMenus : entrées « Vérifier la couverture réseau » (sélection) et
+ *    « Vérifier la connexion de cet hébergement » (pages reconnues) ;
+ *  - storage : transmettre la requête de l'arrière-plan au panneau ;
+ *  - activeTab + scripting : au clic de l'utilisateur seulement, lire l'adresse
+ *    publiée par la page d'hébergement active (accès temporaire à cet onglet).
+ */
+const basePermissions = ['contextMenus', 'storage', 'activeTab', 'scripting'];
+
 const common = {
   manifest_version: 3,
   name: 'Vérifier la couverture réseau',
   version: pkg.version,
   description:
-    'Sélectionnez une adresse, clic droit : couverture mobile théorique 4G/5G des opérateurs à cet endroit (données publiques Arcep).',
-  action: { default_title: 'Vérifier la couverture réseau' },
+    'Couverture mobile théorique 4G/5G des opérateurs à une adresse : sélection + clic droit, saisie, ou adresse d\x27une page d\x27hébergement (données publiques Arcep).',
+  icons,
+  action: { default_title: 'Vérifier la couverture réseau', default_icon: icons },
   content_security_policy: { extension_pages: csp },
   ...devHostPermissions,
 };
@@ -57,15 +74,18 @@ const common = {
 const manifests = {
   chrome: {
     ...common,
-    permissions: ['contextMenus', 'storage', 'sidePanel'],
+    // declarativeContent : pastille sur l'icône des pages d'hébergement, évaluée par le navigateur.
+    permissions: [...basePermissions, 'sidePanel', 'declarativeContent'],
     background: { service_worker: 'background.js' },
     side_panel: { default_path: 'panel.html' },
     minimum_chrome_version: '116', // sidePanel.open()
   },
   firefox: {
     ...common,
-    permissions: ['contextMenus', 'storage'],
+    permissions: basePermissions,
     background: { scripts: ['background.js'] },
+    // Icône dans la barre d'adresse, affichée par Firefox sur les seules pages d'hébergement.
+    page_action: { default_title: 'Vérifier la connexion de cet hébergement', default_icon: detectedIcons, show_matches: LODGING_MATCHES },
     sidebar_action: { default_panel: 'panel.html', default_title: 'Vérifier la couverture réseau', open_at_install: false },
     browser_specific_settings: {
       gecko: { id: '{7c3e9a52-4b1d-4f0e-9d8a-2f6b1e5c0a13}', strict_min_version: '128.0' },

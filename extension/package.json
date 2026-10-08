@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "build": "node build.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "icons": "node scripts/make-icons.ts"
   },
   "devDependencies": {
     "@types/chrome": "^0.3.4",
