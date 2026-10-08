@@ -59,6 +59,14 @@ const detectedIcons = Object.fromEntries(ICON_SIZES.map((s) => [s, `icons/icon-$
  */
 const basePermissions = ['contextMenus', 'storage', 'activeTab', 'scripting'];
 
+/**
+ * Carte « Vérifier la connexion de cet hébergement ? » : content script limité
+ * aux fiches d'hébergement reconnues. Il n'affiche que la carte ; la page n'est
+ * lue qu'au clic sur [Vérifier]. (Implique un accès à ces seules pages, signalé
+ * à l'installation.)
+ */
+const contentScripts = [{ matches: LODGING_MATCHES, js: ['card.js'], run_at: 'document_idle' }];
+
 const common = {
   manifest_version: 3,
   name: 'Vérifier la couverture réseau',
@@ -68,6 +76,7 @@ const common = {
   icons,
   action: { default_title: 'Vérifier la couverture réseau', default_icon: icons },
   content_security_policy: { extension_pages: csp },
+  content_scripts: contentScripts,
   ...devHostPermissions,
 };
 
@@ -110,17 +119,19 @@ for (const [target, manifest] of Object.entries(manifests)) {
     },
   });
 
-  // Arrière-plan : un seul fichier sans import (script classique, valable comme
-  // service worker Chrome et comme script d'arrière-plan Firefox).
-  await build({
-    root,
-    logLevel: 'warn',
-    build: {
-      outDir,
-      emptyOutDir: false,
-      lib: { entry: resolve(root, 'src/background.ts'), formats: ['iife'], name: 'background', fileName: () => 'background.js' },
-    },
-  });
+  // Arrière-plan et carte : chacun un seul fichier sans import (scripts classiques :
+  // service worker Chrome, script d'arrière-plan Firefox, content script).
+  for (const name of ['background', 'card']) {
+    await build({
+      root,
+      logLevel: 'warn',
+      build: {
+        outDir,
+        emptyOutDir: false,
+        lib: { entry: resolve(root, `src/${name}.ts`), formats: ['iife'], name, fileName: () => `${name}.js` },
+      },
+    });
+  }
 
   mkdirSync(outDir, { recursive: true });
   writeFileSync(resolve(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');

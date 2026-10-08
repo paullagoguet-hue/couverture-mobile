@@ -22,6 +22,7 @@ import {
 } from '@couverture/core';
 
 import { api, PENDING_KEY, type PendingQuery } from './browser.ts';
+import { CARD_DISABLED_KEY } from './messages.ts';
 import { DISCLAIMER, SITE_URL, TILES_BASE_URL } from './config.ts';
 import { MiniMap } from './minimap.ts';
 import { SearchBox } from './search.ts';
@@ -275,3 +276,13 @@ if (testQuery) {
 
 // Version affichée en bas du panneau : permet de vérifier que la bonne version est chargée.
 document.getElementById('version')!.textContent = `version ${api?.runtime.getManifest().version ?? 'test'}`;
+
+// « Ne plus proposer » choisi sur la carte : lien pour la réactiver.
+if (api) {
+  const enable = document.getElementById('card-enable') as HTMLButtonElement;
+  const refresh = () =>
+    api.storage.local.get(CARD_DISABLED_KEY).then((s) => (enable.hidden = !s[CARD_DISABLED_KEY]));
+  enable.addEventListener('click', () => api.storage.local.remove(CARD_DISABLED_KEY).then(refresh));
+  api.storage.local.onChanged.addListener(refresh);
+  void refresh();
+}

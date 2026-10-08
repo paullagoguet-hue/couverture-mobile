@@ -13,6 +13,7 @@
 import { api, pageAction, PENDING_KEY, sidebarAction, type PendingBody } from './browser.ts';
 import { ICON_SIZES, iconPixels } from './icon.ts';
 import { extractStructuredAddress, isLodgingUrl, LODGING_MATCHES, LODGING_SITES } from './lodging.ts';
+import type { CheckPageMessage, CheckPageResponse } from './messages.ts';
 
 const MENU_SELECTION = 'verifier-couverture';
 const MENU_PAGE = 'verifier-hebergement';
@@ -54,13 +55,22 @@ api.runtime.onInstalled.addListener(async () => {
   }
 });
 
-/** Ouvre le panneau. À appeler AVANT tout `await` : exige un geste de l'utilisateur. */
-function openPanel(tab: chrome.tabs.Tab | undefined) {
-  if (api.sidePanel && tab?.windowId !== undefined) {
-    api.sidePanel.open({ windowId: tab.windowId }).catch(console.error);
-  } else {
-    sidebarAction?.open().catch(console.error);
-  }
+/**
+ * Ouvre le panneau. À appeler AVANT tout `await` : exige un geste de
+ * l'utilisateur. Résout à false si le navigateur a refusé l'ouverture.
+ */
+function openPanel(tab: chrome.tabs.Tab | undefined): Promise<boolean> {
+  const opening =
+    api.sidePanel && tab?.windowId !== undefined
+      ? api.sidePanel.open({ windowId: tab.windowId })
+      : (sidebarAction?.open() ?? Promise.reject(new Error('aucun panneau disponible')));
+  return opening.then(
+    () => true,
+    (err: unknown) => {
+      console.warn('Ouverture du panneau refusée :', err);
+      return false;
+    },
+  );
 }
 
 function sendToPanel(query: PendingBody) {
@@ -100,10 +110,10 @@ async function checkLodgingPage(tab: chrome.tabs.Tab) {
 // Clic droit sur une sélection, ou sur une page d'hébergement.
 api.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === MENU_SELECTION && info.selectionText) {
-    openPanel(tab);
+    void openPanel(tab);
     sendToPanel({ kind: 'selection', text: info.selectionText });
   } else if (info.menuItemId === MENU_PAGE && tab) {
-    openPanel(tab);
+    void openPanel(tab);
     void checkLodgingPage(tab);
   }
 });
@@ -118,12 +128,24 @@ api.action.onClicked.addListener((tab) => {
     void sidebarAction?.toggle();
     return;
   }
-  openPanel(tab);
+  void openPanel(tab);
   void checkLodgingPage(tab);
 });
 
 // Firefox : icône dans la barre d'adresse, affichée seulement sur les pages d'hébergement.
 pageAction?.onClicked.addListener((tab) => {
-  openPanel(tab);
+  void openPanel(tab);
   void checkLodgingPage(tab);
+});
+
+// Carte affichée sur les fiches d'hébergement : clic sur [Vérifier]. L'adresse a
+// été lue par la carte au moment du clic ; on ouvre le panneau tout de suite
+// (le clic de l'utilisateur dans la page autorise l'ouverture sous Chrome/Edge).
+api.runtime.onMessage.addListener((message: CheckPageMessage, sender, sendResponse: (r: CheckPageResponse) => void) => {
+  if (message?.type !== 'check-lodging-page') return;
+  const opened = openPanel(sender.tab);
+  const { found } = message;
+  sendToPanel(found && !found.notLodging ? { kind: 'page', ...found } : { kind: 'page-error' });
+  opened.then((panelOpened) => sendResponse({ panelOpened }));
+  return true; // réponse asynchrone
 });
