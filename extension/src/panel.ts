@@ -10,14 +10,15 @@ import {
   bestOperators,
   cleanAddress,
   communeToCoverage,
-  COVERED_COLOR,
   CoverageReader,
   geocode,
   isUnambiguous,
-  levelInfo,
   loadCommuneCoverage,
   loadManifest,
+  operatorStatus,
+  STATUS_COLORS,
   summarizeByOperator,
+  type StatusKind,
   type GeocodeResult,
   type LayerCoverage,
   type Manifest,
@@ -118,65 +119,33 @@ async function showCoverage(place: GeocodeResult, runSignal: AbortSignal) {
   }
 }
 
-/** Libellé court d'une clé de répartition (« TBC », « covered », « none »…). */
-const shareLabel = (key: string) =>
-  levelInfo(key)?.short ?? (key === 'covered' ? 'Couvert' : 'Non couvert');
-
-/** Contenu d'une case : pastille de couleur + libellé (jamais la couleur seule). */
-function cell(c: LayerCoverage | undefined): { color: string; label: string; title: string } {
-  if (!c) return { color: 'transparent', label: 'n.d.', title: 'Donnée non disponible' };
-  if (c.area?.kind === 'commune') {
-    // Commune : part de la surface couverte + barre empilée par niveau.
-    const pct = (v: number) => `${Math.round(v * 100)} %`;
-    const parts = Object.entries(c.area.shares).filter(([k, v]) => k !== 'none' && v > 0);
-    const total = parts.reduce((s, [, v]) => s + v, 0);
-    const bar = parts
-      .map(([k, v]) => `<span style="width:${(v * 100).toFixed(1)}%;background:${levelInfo(k)?.color ?? COVERED_COLOR}"></span>`)
-      .join('');
-    return {
-      color: 'transparent',
-      label: `<span class="bar">${bar}</span>${pct(total)}`,
-      title: `Part de la surface de la commune : ${[...parts, ['none', c.area.shares.none ?? 0] as const].map(([k, v]) => `${shareLabel(k)} ${pct(v)}`).join(', ')}`,
-    };
-  }
-  if (c.area) {
-    // Zone : niveau dominant + sa part, répartition complète au survol.
-    const entries = Object.entries(c.area.shares).sort((a, b) => b[1] - a[1]);
-    const [dominant, share] = entries[0];
-    const pct = (v: number) => `${Math.round(v * 100)} %`;
-    const color = levelInfo(dominant)?.color ?? (dominant === 'covered' ? COVERED_COLOR : 'var(--none)');
-    return {
-      color,
-      label: share < 1 ? `${shareLabel(dominant)} · ${pct(share)}` : shareLabel(dominant),
-      title: `Dans un rayon de ${c.area.radiusM} m : ${entries.map(([k, v]) => `${shareLabel(k)} ${pct(v)}`).join(', ')}`,
-    };
-  }
-  if (!c.covered) return { color: 'var(--none)', label: 'Non couvert', title: 'Pas de couverture théorique à cet endroit' };
-  const level = levelInfo(c.level);
-  if (level) return { color: level.color, label: level.short, title: `${level.label} : ${level.description}` };
-  return { color: COVERED_COLOR, label: 'Couvert', title: 'Zone couverte (pas de niveau de qualité publié)' };
-}
+/** Légende des couleurs du verdict (même ordre que le classement). */
+const STATUS_LEGEND: [StatusKind, string][] = [
+  ['5g', '5G partout'],
+  ['5g-partial', '5G sur plus de la moitié'],
+  ['4g', '4G (5G absente ou trop partielle)'],
+  ['none', '4G faible ou pas de réseau'],
+];
 
 function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: LayerCoverage[]) {
   const summaries = summarizeByOperator(coverage);
+  const statuses = new Map(summaries.map((s) => [s.operator, operatorStatus(s)]));
   const best = bestOperators(summaries);
   // Tous ex æquo : pas de « meilleur » à mettre en avant.
   const allTied = best.length === summaries.length && summaries.length > 1;
   const bestIds = new Set(allTied ? [] : best.map((b) => b.operator));
-  const technos = [...new Set(manifest.layers.map((l) => l.techno))].sort();
+  const zone = coverage[0]?.area?.kind;
 
+  // Une ligne par opérateur : un seul verdict coloré (5G / 5G partielle / 4G / …).
   const rows = summaries
     .map((s) => {
-      const cells = technos
-        .map((t) => {
-          const c = cell(s.byTechno[t]);
-          const layer = s.byTechno[t]?.layer;
-          return `<td><button class="cell" data-layer="${layer?.id ?? ''}" title="${escapeHtml(c.title)}"${layer ? '' : ' disabled'}>
-              ${c.color !== 'transparent' ? `<span class="swatch" style="background:${c.color}"></span>` : ''}${c.label}</button></td>`;
-        })
-        .join('');
+      const st = statuses.get(s.operator)!;
       const isBest = bestIds.has(s.operator);
-      return `<tr${isBest ? ' class="best"' : ''}><th scope="row">${escapeHtml(s.operatorLabel)}${isBest ? '<span class="badge">★ meilleur</span>' : ''}</th>${cells}</tr>`;
+      return `<tr${isBest ? ' class="best"' : ''}>
+          <th scope="row">${escapeHtml(s.operatorLabel)}${isBest ? '<span class="badge">★ meilleur</span>' : ''}</th>
+          <td><button class="cell status" data-layer="${st.layerId ?? ''}" title="${escapeHtml(st.detail)}"
+              style="background:${st.color};color:${st.textColor}"${st.layerId ? '' : ' disabled'}>${escapeHtml(st.label)}</button></td>
+        </tr>`;
     })
     .join('');
 
@@ -185,40 +154,43 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
     : allTied
       ? `Les ${summaries.length} opérateurs offrent la même couverture ici.`
       : best.length === 1
-      ? `Meilleure couverture ici : <strong>${escapeHtml(best[0].operatorLabel)}</strong>`
-      : `Meilleure couverture ici (ex æquo) : <strong>${best.map((b) => escapeHtml(b.operatorLabel)).join(', ')}</strong>`;
+        ? `Meilleure couverture ici : <strong>${escapeHtml(best[0].operatorLabel)}</strong>`
+        : `Meilleure couverture ici (ex æquo) : <strong>${best.map((b) => escapeHtml(b.operatorLabel)).join(', ')}</strong>`;
 
   // Dates des données par techno (la 5G et la 4G ne sont pas publiées au même trimestre).
+  const technos = [...new Set(manifest.layers.map((l) => l.techno))].sort();
   const dates = technos
     .map((t) => `${t.toUpperCase()} au ${formatDate(manifest.layers.find((l) => l.techno === t)!.date)}`)
     .join(', ');
 
   show(`
     <h2>${escapeHtml(place.label)}</h2>
-    ${place.type === 'municipality' && !sourceNote && coverage[0]?.area?.kind !== 'commune' // le bandeau de la page le dit déjà
+    ${place.type === 'municipality' && !sourceNote && zone !== 'commune' // le bandeau de la page le dit déjà
       ? '<p class="warning">Commune sans adresse précise : couverture au point central de la commune, elle peut varier ailleurs sur son territoire.</p>'
       : ''}
-    ${coverage[0]?.area?.kind === 'commune'
-      ? `<p class="area-note">Part de la surface de la commune couverte, calculée sur tout son territoire (carte Arcep à 50 m). Survolez une case pour le détail par niveau.</p>`
-      : coverage[0]?.area
-        ? `<p class="area-note">Couverture évaluée dans un rayon de ${coverage[0].area.radiusM} m autour de l'emplacement indiqué (${coverage[0].area.samples} points) : chaque case donne le niveau le plus fréquent et sa part.</p>`
+    ${zone === 'commune'
+      ? '<p class="area-note">Taux de 5G calculé sur tout le territoire de la commune (carte Arcep à 50 m).</p>'
+      : zone === 'circle'
+        ? `<p class="area-note">Taux de 5G évalué dans un rayon de ${coverage[0].area!.radiusM} m autour de l'emplacement indiqué.</p>`
         : ''}
     <p class="best-text">${bestText}</p>
     <table class="coverage">
-      <colgroup><col class="op" />${technos.map(() => '<col />').join('')}</colgroup>
-      <thead><tr><th></th>${technos.map((t) => `<th scope="col">${t.toUpperCase()}</th>`).join('')}</tr></thead>
+      <colgroup><col class="op" /><col /></colgroup>
       <tbody>${rows}</tbody>
     </table>
-    <p class="map-caption">Carte : <strong id="map-layer"></strong> <small>— cliquez une case pour changer</small></p>
+    <ul class="status-legend">${STATUS_LEGEND.map(
+      ([k, text]) => `<li><span class="chip" style="background:${STATUS_COLORS[k].color}"></span>${text}</li>`,
+    ).join('')}</ul>
+    <p class="map-caption">Carte : <strong id="map-layer"></strong> <small>— cliquez un opérateur pour changer</small></p>
     <div id="minimap-slot"></div>
-    <p class="note">La 5G publiée par l'Arcep ne distingue pas les bandes de fréquences : la bande 700 MHz porte loin
-      mais offre un débit proche de la 4G, la bande 3,5 GHz est bien plus rapide mais de faible portée.</p>
+    <p class="note">Un verdict « 5G » ne garantit pas le très haut débit : l'Arcep ne distingue pas la bande 700 MHz
+      (longue portée, débit proche de la 4G) de la bande 3,5 GHz (rapide, faible portée). Le détail par niveau s'affiche au survol.</p>
     <p class="source">${DISCLAIMER} (données ${dates}).</p>
     <p><a id="full-map" target="_blank" rel="noopener">Voir sur la carte complète</a></p>`);
 
   const miniMap = attachMiniMap(document.getElementById('minimap-slot')!);
 
-  // Case sélectionnée = couche affichée sur la mini-carte et sur la carte complète.
+  // Opérateur sélectionné = couche de son verdict (5G ou 4G) sur la mini-carte et la carte complète.
   const select = (layerId: string) => {
     const layer = manifest.layers.find((l) => l.id === layerId);
     if (!layer) return;
@@ -229,13 +201,14 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
     url.searchParams.set('techno', layer.techno);
     url.hash = `15/${place.lat.toFixed(5)}/${place.lng.toFixed(5)}`;
     (document.getElementById('full-map') as HTMLAnchorElement).href = url.href;
-    void miniMap.show(layer, place.lng, place.lat, coverage[0]?.area?.kind === 'commune' ? 11 : 13);
+    void miniMap.show(layer, place.lng, place.lat, zone === 'commune' ? 11 : 13);
   };
   out.querySelectorAll<HTMLButtonElement>('.cell').forEach((b) => b.addEventListener('click', () => select(b.dataset.layer!)));
 
-  // Par défaut : la 4G du meilleur opérateur (ou du premier).
+  // Par défaut : la couche du meilleur opérateur (ou du premier), sinon une 4G.
   const defaultOp = best[0] ?? summaries[0];
-  select((defaultOp.byTechno['4g'] ?? defaultOp.byTechno[technos[0]]).layer.id);
+  const fallback = defaultOp.byTechno['4g'] ?? Object.values(defaultOp.byTechno)[0];
+  select(statuses.get(defaultOp.operator)!.layerId ?? fallback.layer.id);
 }
 
 /**

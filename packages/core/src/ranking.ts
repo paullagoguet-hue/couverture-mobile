@@ -1,15 +1,11 @@
 /**
  * Synthèse de la couverture en un point, par opérateur, et choix du meilleur.
  *
- * Critère (du plus important au moins important) :
- *   1. niveau 4G (TBC > BC > CL > non couvert ; pour une zone, niveau moyen
- *      pondéré par la surface) : c'est la couche « data »
- *      la plus complète, avec des niveaux de qualité ;
- *   2. présence de 5G.
- * Plusieurs opérateurs peuvent être ex æquo.
+ * Classement : cf. bestOperators (verdict 5G/4G, puis qualité 4G).
  */
 import { levelRank } from './levels.ts';
 import type { LayerCoverage } from './coverage.ts';
+import { operatorStatus, statusScore } from './status.ts';
 
 export interface OperatorSummary {
   operator: string;
@@ -18,8 +14,6 @@ export interface OperatorSummary {
   byTechno: Record<string, LayerCoverage>;
 }
 
-/** Ordre des technos dans le classement, de la plus déterminante à la moins. */
-const RANKING_TECHNOS = ['4g', '5g'];
 const NOT_COVERED = 99;
 
 export function summarizeByOperator(coverage: LayerCoverage[]): OperatorSummary[] {
@@ -47,22 +41,21 @@ function coverageScore(c: LayerCoverage | undefined): number {
   return c.layer.has_levels ? levelRank(c.level) : 3;
 }
 
-function scoreTuple(s: OperatorSummary): number[] {
-  return RANKING_TECHNOS.map((t) => coverageScore(s.byTechno[t]));
-}
-
 /** Écart en dessous duquel deux notes de zone sont considérées égales. */
 const TIE = 0.05;
 
-function compareTuples(a: number[], b: number[]): number {
-  for (let i = 0; i < a.length; i++) if (Math.abs(a[i] - b[i]) > TIE) return a[i] - b[i];
-  return 0;
-}
-
-/** Opérateur(s) le(s) mieux classé(s) ; vide si aucun ne couvre le point. */
+/**
+ * Opérateur(s) le(s) mieux classé(s) ; vide si aucun n'a de réseau.
+ * Critère : verdict (5G > 5G partielle > 4G > 4G partielle, cf. status.ts),
+ * puis, à verdict égal, qualité de la 4G (niveaux Arcep).
+ */
 export function bestOperators(summaries: OperatorSummary[]): OperatorSummary[] {
-  const covered = summaries.filter((s) => scoreTuple(s).some((v) => v !== NOT_COVERED));
-  if (!covered.length) return [];
-  const best = covered.reduce((a, b) => (compareTuples(scoreTuple(b), scoreTuple(a)) < 0 ? b : a));
-  return covered.filter((s) => compareTuples(scoreTuple(s), scoreTuple(best)) === 0);
+  const scored = summaries
+    .map((s) => ({ s, score: statusScore(operatorStatus(s)), quality: coverageScore(s.byTechno['4g']) }))
+    .filter((x) => x.score > 0);
+  if (!scored.length) return [];
+  const better = (a: typeof scored[number], b: typeof scored[number]) =>
+    Math.abs(a.score - b.score) > 0.01 ? a.score - b.score : Math.abs(a.quality - b.quality) > TIE ? b.quality - a.quality : 0;
+  const best = scored.reduce((a, b) => (better(b, a) > 0 ? b : a));
+  return scored.filter((x) => better(x, best) === 0).map((x) => x.s);
 }
