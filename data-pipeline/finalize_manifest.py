@@ -23,6 +23,10 @@ def main():
             print(f"ATTENTION : {pmtiles.name} absent, couche retirée du manifeste", file=sys.stderr)
             continue
         layer["tiles"] = {"file": pmtiles.name, "size": pmtiles.stat().st_size}
+        stats = tiles_dir / f"{layer['id']}.stats.json"
+        if stats.exists():  # zooms réels, pour que le front sache quand afficher la couche
+            zmin, zmax = json.loads(stats.read_text(encoding="utf-8"))["zooms"]
+            layer["tiles"].update(minzoom=zmin, maxzoom=zmax)
         layers.append(layer)
     manifest["layers"] = layers
 

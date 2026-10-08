@@ -1,0 +1,12 @@
+{
+  "name": "couverture-mobile",
+  "private": true,
+  "description": "Carte de couverture mobile théorique (open data Arcep) : site web et extension navigateur",
+  "workspaces": [
+    "packages/*",
+    "web"
+  ],
+  "engines": {
+    "node": ">=24"
+  }
+}

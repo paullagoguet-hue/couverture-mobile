@@ -1,0 +1,97 @@
+:root {
+  --panel-bg: rgba(255, 255, 255, 0.95);
+  --text: #1d2327;
+  --muted: #5b6770;
+  --radius: 8px;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #f2f3f0;
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+}
+
+.panel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  max-width: min(320px, calc(100vw - 80px));
+  padding: 12px 14px;
+  background: var(--panel-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  font-size: 14px;
+}
+
+.panel h1 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.levels {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.levels li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.swatch {
+  width: 18px;
+  height: 12px;
+  border-radius: 2px;
+  opacity: 0.8;
+  flex: none;
+}
+
+.source {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.zoom-hint {
+  margin: 0 0 8px;
+  padding: 4px 8px;
+  background: #fff4d6;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.error {
+  color: #b3261e;
+  margin: 0;
+}
+
+.selects {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.selects label {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.selects select {
+  font: inherit;
+  font-weight: 400;
+  padding: 4px;
+}
