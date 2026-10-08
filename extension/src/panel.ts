@@ -49,7 +49,11 @@ let sourceNote = '';
 
 /** Emplacement approximatif : couverture évaluée dans ce rayon (m) plutôt qu'en un point. */
 let areaRadius: number | undefined;
-const APPROX_RADIUS_M = 300;
+/** Rayon par défaut si la page ne précise pas le sien (cf. radiusFor dans lodging.ts). */
+const APPROX_RADIUS_M = 1000;
+
+/** « 300 m », « 1 km », « 2 km ». */
+const formatDistance = (m: number) => (m >= 1000 ? `${(m / 1000).toLocaleString('fr-FR')} km` : `${m} m`);
 
 function show(html: string) {
   out.innerHTML = (sourceNote ? `<p class="from-page">${sourceNote}</p>` : '') + html;
@@ -171,7 +175,7 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
     ${zone === 'commune'
       ? '<p class="area-note">Taux de 5G calculé sur tout le territoire de la commune (carte Arcep à 50 m).</p>'
       : zone === 'circle'
-        ? `<p class="area-note">Taux de 5G évalué dans un rayon de ${coverage[0].area!.radiusM} m autour de l'emplacement indiqué.</p>`
+        ? `<p class="area-note">Taux de 5G évalué dans un rayon de ${formatDistance(coverage[0].area!.radiusM ?? APPROX_RADIUS_M)} autour de l'emplacement indiqué.</p>`
         : ''}
     <p class="best-text">${bestText}</p>
     <table class="coverage">
@@ -256,16 +260,16 @@ function handlePending(p: PendingQuery) {
   } else {
     // Adresse lue sur la page : on l'affiche pour que l'utilisateur puisse la vérifier.
     const what = [p.name, p.address].filter(Boolean).map((s) => escapeHtml(s!)).join(' — ');
+    const radius = p.radiusM ?? (p.precision === 'approximate' ? APPROX_RADIUS_M : undefined);
     // Précision publiée par le site : on la dit clairement.
     const precisionNote = {
       exact: '',
       approximate:
-        `<br /><strong>Emplacement approximatif</strong> : ce site ne publie pas l'adresse exacte (souvent communiquée après réservation), la couverture est donc évaluée dans un rayon de ${APPROX_RADIUS_M} m.`,
+        `<br /><strong>Emplacement approximatif</strong> : ce site ne publie pas l'adresse exacte (souvent communiquée après réservation), la couverture est donc évaluée dans un rayon de ${formatDistance(radius ?? APPROX_RADIUS_M)}.`,
       commune:
         "<br /><strong>Commune seulement</strong> : ce site ne publie pas l'adresse du bien, la couverture est donc donnée pour l'ensemble de la commune.",
     }[p.precision ?? 'exact'];
     const note = `${p.precision === 'exact' ? 'Adresse' : 'Localisation'} lue sur la page : ${what}${precisionNote}`;
-    const radius = p.precision === 'approximate' ? APPROX_RADIUS_M : undefined;
     if (p.lat !== undefined && p.lng !== undefined) {
       // Coordonnées publiées par la page : pas besoin de géocoder.
       sourceNote = note;
