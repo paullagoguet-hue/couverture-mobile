@@ -266,3 +266,6 @@ if (testQuery) {
     if (p) handlePending(p);
   });
 }
+
+// Version affichée en bas du panneau : permet de vérifier que la bonne version est chargée.
+document.getElementById('version')!.textContent = `version ${api?.runtime.getManifest().version ?? 'test'}`;

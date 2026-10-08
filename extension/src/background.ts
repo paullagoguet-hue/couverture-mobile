@@ -68,17 +68,29 @@ function sendToPanel(query: PendingBody) {
   api.storage.session.set({ [PENDING_KEY]: { ...query, at: Date.now() } }).catch(console.error);
 }
 
-/** Lit l'adresse de la page d'hébergement active (appelé uniquement après un clic). */
+/**
+ * Après un clic seulement : si l'onglet actif est une page d'hébergement
+ * reconnue, lit son adresse et l'envoie au panneau. La vérification du type de
+ * page se fait DANS l'onglet (on ne dépend pas de l'URL transmise par le
+ * navigateur) ; sur toute autre page, rien n'est lu.
+ */
 async function checkLodgingPage(tab: chrome.tabs.Tab) {
   if (tab.id === undefined) return;
+  let found;
   try {
-    const [injection] = await api.scripting.executeScript({ target: { tabId: tab.id }, func: extractStructuredAddress });
-    const found = injection?.result;
-    sendToPanel(found ? { kind: 'page', ...found } : { kind: 'page-error' });
+    const [injection] = await api.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: extractStructuredAddress,
+      args: [LODGING_SITES.map(({ hostSuffix, pathPrefix }) => ({ hostSuffix, pathPrefix }))],
+    });
+    found = injection?.result;
   } catch (err) {
-    console.error(err);
-    sendToPanel({ kind: 'page-error' });
+    // Page où les extensions ne peuvent pas s'exécuter (edge://, boutique…) : simple saisie.
+    console.debug('Lecture de la page impossible :', err);
+    return;
   }
+  if (found?.notLodging) return; // pas une page d'hébergement : le panneau propose la saisie
+  sendToPanel(found ? { kind: 'page', ...found } : { kind: 'page-error' });
 }
 
 // Clic droit sur une sélection, ou sur une page d'hébergement.
@@ -97,14 +109,13 @@ api.contextMenus.onClicked.addListener((info, tab) => {
 // qu'à ce moment-là, grâce à activeTab.
 if (api.sidePanel) api.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(console.error);
 api.action.onClicked.addListener((tab) => {
-  if (isLodgingUrl(tab.url)) {
-    openPanel(tab);
-    void checkLodgingPage(tab);
-  } else if (api.sidePanel) {
-    openPanel(tab);
-  } else {
+  // Firefox : sur une page ordinaire dont l'URL est connue, l'icône bascule la barre latérale.
+  if (!api.sidePanel && tab.url && !isLodgingUrl(tab.url)) {
     void sidebarAction?.toggle();
+    return;
   }
+  openPanel(tab);
+  void checkLodgingPage(tab);
 });
 
 // Firefox : icône dans la barre d'adresse, affichée seulement sur les pages d'hébergement.

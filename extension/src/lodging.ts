@@ -39,6 +39,8 @@ export function isLodgingUrl(url: string | undefined): boolean {
 }
 
 export interface PageAddress {
+  /** La page n'est pas une page d'hébergement reconnue : rien n'a été lu. */
+  notLodging?: true;
   name?: string;
   address?: string;
   lat?: number;
@@ -48,9 +50,17 @@ export interface PageAddress {
 /**
  * Exécutée DANS la page, au clic de l'utilisateur (scripting.executeScript).
  * Doit rester autonome : le navigateur la sérialise, elle ne peut rien
- * importer ni utiliser de variable extérieure. Ne lit que les blocs JSON-LD.
+ * importer ni utiliser de variable extérieure (les motifs de pages sont passés
+ * en argument). Vérifie d'abord que la page est une page d'hébergement reconnue
+ * (sinon ne lit rien), puis ne lit que les blocs JSON-LD.
  */
-export function extractStructuredAddress(): PageAddress | null {
+export function extractStructuredAddress(sites: { hostSuffix: string; pathPrefix: string }[]): PageAddress | null {
+  const host = location.hostname;
+  const isLodging = sites.some(
+    (s) => (host === s.hostSuffix || host.endsWith(`.${s.hostSuffix}`)) && location.pathname.startsWith(s.pathPrefix),
+  );
+  if (!isLodging) return { notLodging: true };
+
   const found: Record<string, unknown>[] = [];
   const visit = (node: unknown, depth: number) => {
     if (!node || typeof node !== 'object' || depth > 4) return;
