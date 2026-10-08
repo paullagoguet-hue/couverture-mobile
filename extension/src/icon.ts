@@ -1,8 +1,8 @@
 /**
  * Icône de l'extension dessinée en code (sans bibliothèque ni canvas) :
  * carré arrondi bleu + 4 barres de signal blanches. La variante « détectée »
- * ajoute une pastille orange : elle signale qu'on est sur une page
- * d'hébergement dont l'adresse peut être vérifiée en un clic.
+ * est entièrement orange : bien visible dans la barre d'outils, elle signale
+ * qu'on est sur une page d'hébergement vérifiable en un clic.
  *
  * Utilisée par scripts/make-icons.ts (PNG du paquet) et par background.ts
  * (icône dynamique, qui exige des ImageData).
@@ -10,28 +10,25 @@
 
 const BG = [0x1a, 0x5f, 0x7a];
 const BAR = [0xff, 0xff, 0xff];
-const DOT = [0xf2, 0x8c, 0x28];
+const DETECTED_BG = [0xe8, 0x6f, 0x0c];
 
 type Shape = (x: number, y: number) => number[] | null;
 
 /** Formes en coordonnées normalisées (0..1), de l'arrière vers l'avant. */
 function shapes(highlight: boolean): Shape[] {
   const r = 0.2; // rayon des coins
+  const background = highlight ? DETECTED_BG : BG;
   const roundedSquare: Shape = (x, y) => {
     const cx = Math.min(Math.max(x, r), 1 - r);
     const cy = Math.min(Math.max(y, r), 1 - r);
-    return (x - cx) ** 2 + (y - cy) ** 2 <= r * r ? BG : null;
+    return (x - cx) ** 2 + (y - cy) ** 2 <= r * r ? background : null;
   };
   // 4 barres de hauteur croissante, posées sur une même ligne.
   const bars: Shape[] = [0.3, 0.45, 0.6, 0.75].map((h, i) => (x, y) => {
     const x0 = 0.17 + i * 0.18;
     return x >= x0 && x <= x0 + 0.12 && y <= 0.83 && y >= 0.83 - h * 0.85 ? BAR : null;
   });
-  const dot: Shape = (x, y) => {
-    const d = (x - 0.8) ** 2 + (y - 0.2) ** 2;
-    return d <= 0.2 ** 2 ? (d <= 0.15 ** 2 ? DOT : BAR) : null;
-  };
-  return highlight ? [roundedSquare, ...bars, dot] : [roundedSquare, ...bars];
+  return [roundedSquare, ...bars];
 }
 
 /** Pixels RGBA (size × size) avec anticrénelage par suréchantillonnage 4×4. */
