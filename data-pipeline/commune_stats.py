@@ -9,7 +9,7 @@ bloc, les pixels de chaque niveau dans chaque commune.
 Contours des communes : Etalab « contours administratifs » (issus d'ADMIN
 EXPRESS, IGN), version simplifiée à 50 m, Licence Ouverte. Arrondissements
 municipaux (Paris, Lyon, Marseille) et DROM exclus : la commune entière suffit
-et le périmètre est la métropole.
+et le périmètre est la métropole (DROM 97x et collectivités 98x exclus).
 
 Population : Insee, Filosofi 2019, données carroyées à 200 m (variable « ind »,
 y compris valeurs imputées), Licence Ouverte. Chaque carreau est réparti sur
@@ -60,7 +60,7 @@ def prepare_communes(cache: Path) -> tuple[Path, str, list[tuple[str, str]]]:
         gdal.VectorTranslate(
             str(gpkg), src, format="GPKG", dstSRS="EPSG:2154", layerName="communes",
             SQLDialect="SQLite",
-            SQLStatement=f"SELECT * FROM \"{name}\" WHERE code NOT LIKE '97%' AND NOT ({ARRONDISSEMENTS})",
+            SQLStatement=f"SELECT * FROM \"{name}\" WHERE code NOT LIKE '97%' AND code NOT LIKE '98%' AND NOT ({ARRONDISSEMENTS})",
         )
     ds = ogr.Open(str(gpkg))
     layer = ds.GetLayer("communes")

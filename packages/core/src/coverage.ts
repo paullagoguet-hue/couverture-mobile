@@ -97,6 +97,10 @@ export interface AreaStats {
   /** Cercle autour d'un point approximatif, ou territoire d'une commune. */
   kind: 'circle' | 'commune';
   radiusM?: number;
+  /** Commune : parts calculées sur ses habitants (par défaut) ou, faute d'habitants recensés, sur sa surface. */
+  basis?: 'population' | 'surface';
+  /** Commune : nombre d'habitants (Insee, Filosofi 2019). */
+  inhabitants?: number;
   /** Nombre de points échantillonnés (cercle) ; 0 pour une commune (calcul exhaustif). */
   samples: number;
   /** Part des points par niveau : « TBC », « BC », « CL », « covered » (sans niveau), « none ». */

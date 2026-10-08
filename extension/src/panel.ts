@@ -173,7 +173,9 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
       ? '<p class="warning">Commune sans adresse précise : couverture au point central de la commune, elle peut varier ailleurs sur son territoire.</p>'
       : ''}
     ${zone === 'commune'
-      ? '<p class="area-note">Taux de 5G calculé sur tout le territoire de la commune (carte Arcep à 50 m).</p>'
+      ? coverage[0].area!.basis === 'surface'
+        ? '<p class="area-note">Taux de 5G calculé sur tout le territoire de la commune (carte Arcep à 50 m).</p>'
+        : `<p class="area-note">Taux de 5G calculé sur les ${(coverage[0].area!.inhabitants ?? 0).toLocaleString('fr-FR')} habitants de la commune (Insee 2019), là où ils vivent : les zones inhabitées ne comptent pas.</p>`
       : zone === 'circle'
         ? `<p class="area-note">Taux de 5G évalué dans un rayon de ${formatDistance(coverage[0].area!.radiusM ?? APPROX_RADIUS_M)} autour de l'emplacement indiqué.</p>`
         : ''}

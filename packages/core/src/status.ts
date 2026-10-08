@@ -74,7 +74,8 @@ export function operatorStatus(s: OperatorSummary): OperatorStatus {
   const share5g = coveredShare(c5);
   const share4g = coveredShare(c4);
   const zone = Boolean(c5?.area ?? c4?.area);
-  const where = zone ? (c5?.area?.kind ?? c4?.area?.kind) === 'commune' ? 'de la commune' : 'des alentours' : '';
+  const area = c5?.area ?? c4?.area;
+  const where = !area ? '' : area.kind === 'circle' ? 'des alentours' : area.basis === 'surface' ? 'de la commune' : 'des habitants';
   const detail = `5G : ${zone ? `${pct(share5g)} ${where}` : share5g ? 'couverte' : 'non couverte'} · 4G : ${describe4g(c4)}`;
 
   let kind: StatusKind;
