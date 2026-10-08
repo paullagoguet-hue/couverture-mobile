@@ -61,7 +61,9 @@ async function run(text: string) {
   } catch (err) {
     if (run.signal.aborted) return;
     console.error(err);
-    show(`<p class="error">Erreur : ${escapeHtml((err as Error).message)}</p>`);
+    show(`<p class="error"><strong>La recherche d'adresse a échoué.</strong><br />
+      Le service de géocodage de l'IGN (data.geopf.fr) est injoignable.</p>
+      <p class="source">Détail : ${escapeHtml((err as Error).message)}</p>`);
   }
 }
 
@@ -83,7 +85,7 @@ async function showCoverage(place: GeocodeResult, runSignal: AbortSignal) {
     const timedOut = signal.aborted;
     show(`<p class="error"><strong>Impossible de lire la couverture.</strong><br />
       ${timedOut ? `Le serveur des cartes ne répond pas (délai de ${COVERAGE_TIMEOUT_MS / 1000} s dépassé).` : `Le serveur des cartes est injoignable.`}</p>
-      <p class="source">Serveur : ${escapeHtml(new URL(TILES_BASE_URL).origin)}</p>
+      <p class="source">Serveur : ${escapeHtml(new URL(TILES_BASE_URL).origin)}<br />Détail : ${escapeHtml((err as Error).message)}</p>
       <p><button id="retry">Réessayer</button></p>`);
     out.querySelector('#retry')!.addEventListener('click', () => showCoverage(place, runSignal));
   }

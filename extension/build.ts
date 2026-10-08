@@ -20,7 +20,7 @@ const root = dirname(fileURLToPath(import.meta.url));
 const pkg = (await import('./package.json', { with: { type: 'json' } })).default;
 
 const env = { ...loadEnv('production', root, 'VITE_'), ...process.env };
-const tilesBase = env.VITE_TILES_BASE_URL ?? 'http://localhost:5173/tiles/';
+const tilesBase = env.VITE_TILES_BASE_URL ?? 'http://127.0.0.1:5173/tiles/';
 const GEOCODER_ORIGIN = 'https://data.geopf.fr';
 
 /**
@@ -34,6 +34,15 @@ const csp = [
   `connect-src ${GEOCODER_ORIGIN} ${new URL(tilesBase).origin}`,
 ].join('; ');
 
+/**
+ * Développement uniquement : quand les tuiles sont servies par la machine
+ * locale, Chromium (protection « accès au réseau local ») exige une permission
+ * d'hôte explicite pour cette adresse. Le build de production (tuiles en ligne)
+ * n'a AUCUNE permission d'hôte.
+ */
+const isLoopback = ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(tilesBase).hostname);
+const devHostPermissions = isLoopback ? { host_permissions: [`${new URL(tilesBase).origin}/*`] } : {};
+
 const common = {
   manifest_version: 3,
   name: 'Vérifier la couverture réseau',
@@ -42,6 +51,7 @@ const common = {
     'Sélectionnez une adresse, clic droit : couverture mobile théorique 4G/5G des opérateurs à cet endroit (données publiques Arcep).',
   action: { default_title: 'Vérifier la couverture réseau' },
   content_security_policy: { extension_pages: csp },
+  ...devHostPermissions,
 };
 
 const manifests = {
@@ -88,5 +98,5 @@ for (const [target, manifest] of Object.entries(manifests)) {
 
   mkdirSync(outDir, { recursive: true });
   writeFileSync(resolve(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
-  console.log(`dist/${target} : OK (CSP ${csp})`);
+  console.log(`dist/${target} : OK (CSP ${csp}${isLoopback ? ' ; build de DEV : permission d\x27hôte ' + new URL(tilesBase).origin : ''})`);
 }
