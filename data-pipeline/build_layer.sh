@@ -8,8 +8,9 @@
 #          reprojection EPSG:4326 (GeoJSONSeq) -> tippecanoe -> PMTiles.
 #
 # Réglages (variables d'environnement) :
-#   MIN_ZOOM / MAX_ZOOM   plage de zoom des tuiles (défaut 4 / 12 ; MapLibre
-#                         sur-zoome au-delà du zoom max)
+#   MIN_ZOOM / MAX_ZOOM   plage de zoom des tuiles (défaut : minzoom de la techno
+#                         dans le manifeste / 12 ; MapLibre sur-zoome au-delà)
+#   COMMUNE_STATS=0       saute le calcul des parts de surface par commune
 #   TIPPECANOE_OPTS       options de généralisation tippecanoe (défaut ci-dessous)
 #   TIPPECANOE_EXTRA      options supplémentaires passées à tippecanoe
 #   MAKEVALID=0           saute la réparation GEOS des géométries (coûteuse sur
@@ -20,7 +21,7 @@ set -euo pipefail
 source "$(dirname "$0")/env.sh"
 
 LAYER=${1:?usage: build_layer.sh <layer_id>}
-MIN_ZOOM=${MIN_ZOOM:-4}
+MIN_ZOOM=${MIN_ZOOM:-}
 MAX_ZOOM=${MAX_ZOOM:-12}
 KEEP_RAW=${KEEP_RAW:-1}
 KEEP_WORK=${KEEP_WORK:-0}
@@ -32,6 +33,7 @@ TIPPECANOE_OPTS=${TIPPECANOE_OPTS:---no-simplification-of-shared-nodes --drop-sm
 layer_json=$(jq -c --arg id "$LAYER" '.layers[] | select(.id == $id)' "$MANIFEST")
 [ -n "$layer_json" ] || die "couche $LAYER absente de $MANIFEST"
 field() { jq -r "$1" <<<"$layer_json"; }
+MIN_ZOOM=${MIN_ZOOM:-$(field '.minzoom // 4')}
 
 src_file=$(field .source.file)
 src_url=$(field .source.url)
@@ -66,6 +68,13 @@ log "[$LAYER] contrôle du GeoPackage"
 table=$(jq -r .table "$TILES_DIR/$LAYER.source.json")
 geom_col=$(jq -r .geometry_column "$TILES_DIR/$LAYER.source.json")
 log "[$LAYER] $(jq -c .features_by_level "$TILES_DIR/$LAYER.source.json")"
+
+# --- 3 bis. Part de surface couverte par commune (avant de supprimer le GeoPackage).
+if [ "${COMMUNE_STATS:-1}" = 1 ]; then
+  log "[$LAYER] parts de surface par commune"
+  "$PY" "$PIPELINE_DIR/commune_stats.py" "$gpkg" "$table" "$geom_col" "$TILES_DIR/$LAYER.communes.csv" "$WORK_DIR/communes-cache"
+  log "[$LAYER] communes terminé à ${SECONDS} s"
+fi
 
 # --- 4. Reprojection en WGS84 + nettoyage.
 #  - Lambert-93 forcé : le fichier le déclare via un SRS « maison » (id 100000).

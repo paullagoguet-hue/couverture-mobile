@@ -15,6 +15,7 @@ check() {
     command -v "$cmd" >/dev/null || { log "manquant : $cmd"; missing=1; }
   done
   "$PY" -c 'import pmtiles' 2>/dev/null || { log "manquant : module Python pmtiles"; missing=1; }
+  "$PY" -c 'import numpy; from osgeo import gdal' 2>/dev/null || { log "manquant : GDAL Python / NumPy"; missing=1; }
   return $missing
 }
 
@@ -31,7 +32,7 @@ SUDO=; [ "$(id -u)" -eq 0 ] || SUDO=sudo
 log "Paquets système"
 $SUDO apt-get update -qq
 $SUDO apt-get install -y -qq --no-install-recommends \
-  gdal-bin p7zip-full jq curl ca-certificates python3 python3-venv \
+  gdal-bin python3-gdal python3-numpy p7zip-full jq curl ca-certificates python3 python3-venv \
   build-essential libsqlite3-dev zlib1g-dev
 
 mkdir -p "$TOOLS_DIR/bin"
@@ -54,9 +55,10 @@ if ! pmtiles version 2>/dev/null | grep -q "$PMTILES_VERSION"; then
     | tar -xz -C "$TOOLS_DIR/bin" pmtiles
 fi
 
-# --- Environnement Python isolé (seul tile_stats.py a une dépendance).
+# --- Environnement Python isolé (pmtiles pour tile_stats.py ; GDAL et NumPy système pour commune_stats.py).
 if [ ! -x "$VENV_DIR/bin/python" ]; then
-  python3 -m venv "$VENV_DIR"
+  # --system-site-packages : GDAL (osgeo) et NumPy viennent des paquets système.
+  python3 -m venv --system-site-packages "$VENV_DIR"
 fi
 "$VENV_DIR/bin/pip" install -q -r "$PIPELINE_DIR/requirements.txt"
 PY="$VENV_DIR/bin/python"

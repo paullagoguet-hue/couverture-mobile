@@ -117,6 +117,7 @@ def discover(layers) -> dict:
                     "arcep_techno": tech["arcep"],
                     "usage": tech["usage"],
                     "has_levels": tech["levels"],
+                    "minzoom": tech["minzoom"],
                     "quarter": q,
                     "date": f"{year}-{QUARTER_END[int(n)]}",
                     "source": {

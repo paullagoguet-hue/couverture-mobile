@@ -21,12 +21,15 @@ OPERATORS = {
 
 # Technologies publiées. `levels` indique si l'Arcep fournit des niveaux
 # de qualité (TBC / BC / CL) ; vérifié sur les fichiers 2025_T4 / 2026_T2.
+# `minzoom` : zoom minimal des tuiles. Les couches à niveaux (2,4 M fragments
+# pour la 4G) font échouer tippecanoe aux petits zooms : en attendant une
+# généralisation par raster, elles ne sont tuilées qu'à partir de z10.
 TECHNOS = {
-    "2g": {"label": "2G (voix)", "arcep": "2G", "usage": "voix", "levels": True},
-    "2g3g": {"label": "2G/3G (voix)", "arcep": "2G3G", "usage": "voix", "levels": True},
-    "3g": {"label": "3G (data)", "arcep": "3G", "usage": "data", "levels": False},
-    "4g": {"label": "4G (data)", "arcep": "4G", "usage": "data", "levels": True},
-    "5g": {"label": "5G (data)", "arcep": "5G", "usage": "data", "levels": False},
+    "2g": {"label": "2G (voix)", "arcep": "2G", "usage": "voix", "levels": True, "minzoom": 10},
+    "2g3g": {"label": "2G/3G (voix)", "arcep": "2G3G", "usage": "voix", "levels": True, "minzoom": 10},
+    "3g": {"label": "3G (data)", "arcep": "3G", "usage": "data", "levels": False, "minzoom": 4},
+    "4g": {"label": "4G (data)", "arcep": "4G", "usage": "data", "levels": True, "minzoom": 10},
+    "5g": {"label": "5G (data)", "arcep": "5G", "usage": "data", "levels": False, "minzoom": 4},
 }
 
 # Couches volontairement exclues.

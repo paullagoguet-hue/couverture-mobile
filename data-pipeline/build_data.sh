@@ -23,4 +23,5 @@ for layer in $(jq -r '.layers[].id' "$MANIFEST"); do
 done
 
 "$PY" "$PIPELINE_DIR/finalize_manifest.py" "$MANIFEST" "$TILES_DIR"
+"$PY" "$PIPELINE_DIR/merge_communes.py" "$MANIFEST" "$TILES_DIR" "$TILES_DIR/communes"
 log "Terminé : $TILES_DIR"

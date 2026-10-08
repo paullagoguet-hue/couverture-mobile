@@ -11,11 +11,11 @@ on:
       layers:
         description: "Couches (ids séparés par des espaces, ex. « orange-4g sfr-5g ») ; vide = toutes"
         required: false
-        default: "orange-4g"
+        default: "orange-4g sfr-4g bouygues-4g free-4g orange-5g sfr-5g bouygues-5g free-5g"
       min_zoom:
-        description: "Zoom minimum des tuiles"
+        description: "Zoom minimum des tuiles (vide = valeur de la techno, cf. layers.py)"
         required: false
-        default: "4"
+        default: ""
       max_zoom:
         description: "Zoom maximum des tuiles"
         required: false
@@ -137,3 +137,35 @@ jobs:
           path: tiles/
           compression-level: 0  # PMTiles déjà compressé
           retention-days: 7
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: communes-${{ matrix.layer }}
+          path: tiles/${{ matrix.layer }}.communes.csv
+          retention-days: 7
+
+  communes:
+    name: Parts de surface par commune
+    needs: [discover, build]
+    if: always() && needs.discover.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: manifest
+          path: ${{ runner.temp }}/manifest
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: communes-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/communes-csv
+      - name: Fusion par département
+        run: |
+          python3 data-pipeline/merge_communes.py "$RUNNER_TEMP/manifest/manifest.json" "$RUNNER_TEMP/communes-csv" communes
+          echo "### Parts de surface par commune : $(ls communes | wc -l) départements, $(du -sh communes | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: communes
+          path: communes/
+          retention-days: 14
