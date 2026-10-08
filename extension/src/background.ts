@@ -12,7 +12,7 @@
  */
 import { api, pageAction, PENDING_KEY, sidebarAction, type PendingBody } from './browser.ts';
 import { ICON_SIZES, iconPixels } from './icon.ts';
-import { extractStructuredAddress, isLodgingUrl, LODGING_MATCHES, LODGING_RULES, LODGING_SITES } from './lodging.ts';
+import { extractStructuredAddress, isLodgingUrl, LODGING_MATCHES, LODGING_RULES, LODGING_SITES, urlRegexFor } from './lodging.ts';
 import type { CheckPageMessage, CheckPageResponse } from './messages.ts';
 
 const MENU_SELECTION = 'verifier-couverture';
@@ -46,7 +46,7 @@ api.runtime.onInstalled.addListener(async () => {
       dc.onPageChanged.addRules([
         {
           conditions: LODGING_SITES.map(
-            (s) => new dc.PageStateMatcher({ pageUrl: { hostSuffix: s.hostSuffix, pathPrefix: s.pathPrefix } }),
+            (s) => new dc.PageStateMatcher({ pageUrl: { hostSuffix: s.host, urlMatches: urlRegexFor(s) } }),
           ),
           actions: [new dc.SetIcon({ imageData })],
         },

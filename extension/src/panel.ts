@@ -151,7 +151,7 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
 
   show(`
     <h2>${escapeHtml(place.label)}</h2>
-    ${place.type === 'municipality'
+    ${place.type === 'municipality' && !sourceNote // le bandeau de la page le dit déjà
       ? '<p class="warning">Commune sans adresse précise : couverture au point central de la commune, elle peut varier ailleurs sur son territoire.</p>'
       : ''}
     <p class="best-text">${bestText}</p>
@@ -233,9 +233,15 @@ function handlePending(p: PendingQuery) {
   } else {
     // Adresse lue sur la page : on l'affiche pour que l'utilisateur puisse la vérifier.
     const what = [p.name, p.address].filter(Boolean).map((s) => escapeHtml(s!)).join(' — ');
-    const note = p.approximate
-      ? `Emplacement lu sur la page : ${what}<br /><strong>Emplacement approximatif</strong> : ce site ne publie pas l'adresse exacte (souvent communiquée après réservation), la couverture peut varier aux alentours.`
-      : `Adresse lue sur la page : ${what}`;
+    // Précision publiée par le site : on la dit clairement.
+    const precisionNote = {
+      exact: '',
+      approximate:
+        '<br /><strong>Emplacement approximatif</strong> : ce site ne publie pas l\x27adresse exacte (souvent communiquée après réservation), la couverture peut varier aux alentours.',
+      commune:
+        '<br /><strong>Commune seulement</strong> : ce site ne publie pas l\x27adresse du bien, la couverture est indiquée pour le centre de la commune.',
+    }[p.precision ?? 'exact'];
+    const note = `${p.precision === 'exact' ? 'Adresse' : 'Localisation'} lue sur la page : ${what}${precisionNote}`;
     if (p.lat !== undefined && p.lng !== undefined) {
       // Coordonnées publiées par la page : pas besoin de géocoder.
       sourceNote = note;

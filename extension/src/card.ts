@@ -12,7 +12,7 @@
  * - Shadow DOM fermé : styles et code isolés de ceux du site.
  */
 import { api } from './browser.ts';
-import { extractStructuredAddress, LODGING_RULES } from './lodging.ts';
+import { extractStructuredAddress, isLodgingUrl, LODGING_RULES } from './lodging.ts';
 import { CARD_DISABLED_KEY, type CheckPageMessage, type CheckPageResponse } from './messages.ts';
 
 const HOST_ID = 'verifier-couverture-reseau-carte';
@@ -52,6 +52,9 @@ const STYLE = `
 `;
 
 async function showCard() {
+  // Le content script est déclaré sur des motifs parfois plus larges que les fiches
+  // (ex. adresses sans préfixe fixe) : on ne s'affiche que sur une fiche reconnue.
+  if (!isLodgingUrl(location.href)) return;
   // Désactivée par l'utilisateur, ou déjà affichée (navigation interne du site).
   const settings = await api.storage.local.get(CARD_DISABLED_KEY);
   if (settings[CARD_DISABLED_KEY] || document.getElementById(HOST_ID)) return;
