@@ -27,13 +27,25 @@ export function normalizeQuery(text: string): string | null {
 
 export async function geocode(
   text: string,
-  { limit = 5, signal, fetchFn = fetch }: { limit?: number; signal?: AbortSignal; fetchFn?: typeof fetch } = {},
+  {
+    limit = 5,
+    autocomplete = false,
+    signal,
+    fetchFn = fetch,
+  }: {
+    limit?: number;
+    /** Saisie en cours : l'API complète les mots partiels (« 15 bd de la lib »). */
+    autocomplete?: boolean;
+    signal?: AbortSignal;
+    fetchFn?: typeof fetch;
+  } = {},
 ): Promise<GeocodeResult[]> {
   const q = normalizeQuery(text);
   if (!q) return [];
   const url = new URL(GEOCODER_URL);
   url.searchParams.set('q', q);
   url.searchParams.set('limit', String(limit));
+  if (autocomplete) url.searchParams.set('autocomplete', '1');
   const resp = await fetchFn(url, { signal });
   if (!resp.ok) throw new Error(`Géocodage indisponible (${resp.status})`);
   const json = await resp.json();

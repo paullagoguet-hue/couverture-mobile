@@ -23,6 +23,7 @@ import {
 import { api, PENDING_KEY, type PendingQuery } from './browser.ts';
 import { DISCLAIMER, SITE_URL, TILES_BASE_URL } from './config.ts';
 import { MiniMap } from './minimap.ts';
+import { SearchBox } from './search.ts';
 
 const out = document.getElementById('result')!;
 let reader = new CoverageReader(TILES_BASE_URL);
@@ -44,6 +45,7 @@ function show(html: string) {
 
 /** Point d'entrée : un texte sélectionné ou saisi. */
 async function run(text: string) {
+  search.setText(text);
   currentRun?.abort();
   const run = (currentRun = new AbortController());
   show(`<p class="status">Recherche de « ${escapeHtml(text)} »…</p>`);
@@ -108,7 +110,9 @@ function cell(c: LayerCoverage | undefined): { color: string; label: string; tit
 function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: LayerCoverage[]) {
   const summaries = summarizeByOperator(coverage);
   const best = bestOperators(summaries);
-  const bestIds = new Set(best.map((b) => b.operator));
+  // Tous ex æquo : pas de « meilleur » à mettre en avant.
+  const allTied = best.length === summaries.length && summaries.length > 1;
+  const bestIds = new Set(allTied ? [] : best.map((b) => b.operator));
   const technos = [...new Set(manifest.layers.map((l) => l.techno))].sort();
 
   const rows = summaries
@@ -128,7 +132,9 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
 
   const bestText = !best.length
     ? 'Aucun opérateur ne couvre cet endroit en 4G ou 5G.'
-    : best.length === 1
+    : allTied
+      ? `Les ${summaries.length} opérateurs offrent la même couverture ici.`
+      : best.length === 1
       ? `Meilleure couverture ici : <strong>${escapeHtml(best[0].operatorLabel)}</strong>`
       : `Meilleure couverture ici (ex æquo) : <strong>${best.map((b) => escapeHtml(b.operatorLabel)).join(', ')}</strong>`;
 
@@ -192,14 +198,29 @@ function attachMiniMap(slot: HTMLElement): MiniMap {
 
 // --- Réception des requêtes -------------------------------------------------
 
+// Saisie manuelle (étape 5) : Entrée, ou choix d'une suggestion.
+const search = new SearchBox(document.getElementById('search') as HTMLFormElement, {
+  onSubmit: (text) => void run(text),
+  onPick: (place) => {
+    currentRun?.abort();
+    const ctrl = (currentRun = new AbortController());
+    void showCoverage(place, ctrl.signal);
+  },
+});
+
+/** Au-delà, une sélection déposée par le clic droit est considérée comme ancienne. */
+const PENDING_MAX_AGE_MS = 30_000;
+
 const testQuery = new URLSearchParams(location.search).get('q');
 if (testQuery) {
   void run(testQuery);
 } else if (api) {
-  // Requête déposée avant l'ouverture du panneau…
+  // Requête déposée par le clic droit juste avant l'ouverture du panneau ;
+  // sinon (ouverture par l'icône), on donne la main au champ de saisie.
   api.storage.session.get(PENDING_KEY).then((items) => {
     const p = items[PENDING_KEY] as PendingQuery | undefined;
-    if (p) void run(p.text);
+    if (p && Date.now() - p.at < PENDING_MAX_AGE_MS) void run(p.text);
+    else search.focus();
   });
   // … ou pendant qu'il est ouvert.
   api.storage.session.onChanged.addListener((changes) => {

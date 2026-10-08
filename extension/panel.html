@@ -60,14 +60,45 @@
       .map-caption small { color: var(--muted); }
       #minimap { height: 240px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
 
+      /* Recherche */
+      #search { position: relative; margin-bottom: 12px; }
+      .search-row { display: flex; gap: 6px; }
+      .search-row input {
+        flex: 1; min-width: 0; font: inherit; padding: 6px 8px;
+        border: 1px solid var(--border); border-radius: 6px;
+      }
+      .search-row input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+      .search-row button {
+        font: inherit; font-weight: 600; padding: 6px 10px; cursor: pointer;
+        border: none; border-radius: 6px; background: var(--accent); color: #fff;
+      }
+      .suggestions {
+        position: absolute; z-index: 10; left: 0; right: 0; margin: 2px 0 0; padding: 4px 0; list-style: none;
+        background: #fff; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+      }
+      .suggestions button {
+        display: block; width: 100%; text-align: left; font: inherit; padding: 5px 10px;
+        border: none; background: none; cursor: pointer; color: inherit;
+      }
+      .suggestions button:hover, .suggestions button:focus { background: var(--best); outline: none; }
+      .suggestions small { display: block; color: var(--muted); font-size: 12px; }
+      .hint { color: var(--muted); }
+
       .note, .source { color: var(--muted); font-size: 12px; }
       .note { margin-top: 10px; }
     </style>
   </head>
   <body>
     <h1>Vérifier la couverture réseau</h1>
+    <form id="search" role="search" autocomplete="off">
+      <div class="search-row">
+        <input type="search" name="q" placeholder="Adresse ou commune" aria-label="Adresse ou commune" maxlength="200" />
+        <button type="submit">Vérifier</button>
+      </div>
+      <ul class="suggestions" role="listbox" hidden></ul>
+    </form>
     <div id="result">
-      <p>Sélectionnez une adresse ou un nom de commune sur une page, puis faites un clic droit
+      <p class="hint">Tapez une adresse ci-dessus, ou sélectionnez-la sur une page puis faites un clic droit
         et choisissez « Vérifier la couverture réseau ».</p>
     </div>
     <script type="module" src="./src/panel.ts"></script>
