@@ -132,6 +132,12 @@ const pt: Messages = {
   cardReady: 'Resultado pronto: clique no ícone laranja da extensão, na barra de endereço.',
   sourcesFor: 'Fontes: {country}',
   srcCoverage: 'Cobertura: {source}{dates}.',
+  areaNetworks: "Valor mais frequente num raio de {d}",
+  networksTitle: "Redes com cobertura aqui",
+  outOf: "{n} de {total}",
+  unnamedOps: "Operadores: {ops}. O mapa oficial não diz quais.",
+  mapNetworks: "número de redes {techno}",
+  legend_networks: "Itália, Suíça: número de redes com cobertura, já que o mapa oficial não diz quais.",
   srcAddressesMaps: 'Moradas: {geocoder}. Mapa de base: {basemap}.',
 };
 

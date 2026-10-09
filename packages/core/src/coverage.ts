@@ -76,12 +76,11 @@ export function coverageInTile(data: ArrayBuffer, px: number, py: number) {
  * Points d'échantillonnage dans un cercle : le centre puis des anneaux
  * concentriques espacés d'environ 300 m (au moins 2), l'anneau k portant 6k
  * points. Répartition à peu près uniforme : 19 points pour 300 m, 61 pour
- * 1 km, 169 pour 2 km.
+ * 1 km, 169 pour 2 km. `rings` impose le nombre d'anneaux (2 : 19 points).
  */
-export function pointsAround(lng: number, lat: number, radiusM: number): [number, number][] {
+export function pointsAround(lng: number, lat: number, radiusM: number, rings = Math.max(2, Math.ceil(radiusM / 300))): [number, number][] {
   const mPerDegLat = 111_320;
   const mPerDegLng = mPerDegLat * Math.cos((lat * Math.PI) / 180);
-  const rings = Math.max(2, Math.ceil(radiusM / 300));
   const pts: [number, number][] = [[lng, lat]];
   for (let k = 1; k <= rings; k++) {
     const r = (radiusM * k) / rings;

@@ -6,7 +6,7 @@
 L'extension « Vérifier la couverture réseau » affiche la couverture mobile
 théorique (données publiques des régulateurs et ministères de chaque pays :
 Arcep en France, ministère du Numérique en Espagne, ANACOM au Portugal, IBPT en
-Belgique) à une adresse. Elle n'a pas de
+Belgique, ILR au Luxembourg, AGCOM en Italie, OFCOM en Suisse) à une adresse. Elle n'a pas de
 compte utilisateur, ne dépose pas de cookie, n'utilise aucun outil de mesure
 d'audience ni de pistage publicitaire, et ne vend ni ne partage aucune donnée.
 
@@ -34,9 +34,10 @@ vos identifiants, ni le contenu des autres pages.
 
 | Donnée | Destinataire | Finalité |
 |---|---|---|
-| Texte sélectionné, adresse saisie ou adresse lue sur la page | Service de géocodage du pays recherché : Géoplateforme de l'IGN (`data.geopf.fr`) pour la France, CartoCiudad de l'IGN espagnol (`www.cartociudad.es`) pour l'Espagne, notre serveur de géocodage (logiciel Photon, données OpenStreetMap, [domaine à compléter]) pour les autres pays | Convertir l'adresse en position sur la carte |
+| Texte sélectionné, adresse saisie ou adresse lue sur la page | Service de géocodage du pays recherché : Géoplateforme de l'IGN (`data.geopf.fr`) pour la France, CartoCiudad de l'IGN espagnol (`www.cartociudad.es`) pour l'Espagne, swisstopo (`api3.geo.admin.ch`) pour la Suisse, notre serveur de géocodage (logiciel Photon, données OpenStreetMap, [domaine à compléter]) pour les autres pays | Convertir l'adresse en position sur la carte |
 | Requêtes de fond de carte (zone affichée) | Géoplateforme de l'IGN (`data.geopf.fr`) en France ; OpenFreeMap (`tiles.openfreemap.org`) dans les autres pays | Afficher la mini-carte |
 | Requêtes de tuiles de couverture (zone autour de l'adresse) | Hébergement des données de couverture : [domaine à compléter] | Lire la couverture à cet endroit |
+| Zone autour de l'adresse (coordonnées, sans le texte de l'adresse), en Italie et en Suisse | AGCOM (`geo3.agcom.it`) en Italie ; OFCOM via geo.admin.ch (`data.geo.admin.ch`, `wmts.geo.admin.ch`) en Suisse | Lire le nombre de réseaux à cet endroit et afficher la carte |
 | Demande du contenu de l'encart publicitaire éventuel (texte et image), sans l'adresse recherchée | Même hébergement | Afficher l'encart sous le résultat |
 | Aucune donnée : seule l'ouverture du lien de l'encart, **si vous cliquez dessus** | Annonceur | Visite de son site |
 
@@ -89,6 +90,16 @@ Portugal : couverture mobile de l'ANACOM, « GEO.ANACOM » ; géocodage par notr
 
 Belgique : couverture mobile de l'IBPT, atlas mobile ; géocodage par notre serveur
 (données OpenStreetMap) ; fond de carte OpenFreeMap.
+
+Luxembourg : couverture mobile de l'ILR, relevé géographique des réseaux (CC BY 4.0) ;
+grille de 100 m de l'Administration du cadastre (CC0) ; géocodage par notre serveur
+(données OpenStreetMap) ; fond de carte OpenFreeMap.
+
+Italie : nombre de réseaux de l'AGCOM, « Broadband Map » ; géocodage par notre serveur
+(données OpenStreetMap) ; fond de carte OpenFreeMap.
+
+Suisse : nombre de réseaux de l'OFCOM, « Atlas du haut débit » (geo.admin.ch) ;
+géocodage swisstopo (geo.admin.ch) ; fond de carte OpenFreeMap.
 
 Frontières (pour reconnaître le pays d'une annonce) : Eurostat GISCO, © EuroGeographics.
 

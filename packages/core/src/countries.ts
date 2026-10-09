@@ -5,21 +5,28 @@
  */
 import { BORDERS } from './borders.ts';
 
-export type CountryCode = 'fr' | 'es' | 'pt' | 'be' | 'lu';
+export type CountryCode = 'fr' | 'es' | 'pt' | 'be' | 'lu' | 'it' | 'ch';
 
 export interface Country {
   code: CountryCode;
   label: string;
   /** Dossier des tuiles, relatif à la racine des données. */
   path: string;
+  /**
+   * Données publiées : couverture par opérateur (nos tuiles), ou seulement le
+   * nombre de réseaux, lu en direct aux services officiels (cf. networks.ts).
+   */
+  data: 'operators' | 'networks';
 }
 
 export const COUNTRIES: Record<CountryCode, Country> = {
-  fr: { code: 'fr', label: 'France', path: '' },
-  es: { code: 'es', label: 'Espagne', path: 'es/' },
-  pt: { code: 'pt', label: 'Portugal', path: 'pt/' },
-  be: { code: 'be', label: 'Belgique', path: 'be/' },
-  lu: { code: 'lu', label: 'Luxembourg', path: 'lu/' },
+  fr: { code: 'fr', label: 'France', path: '', data: 'operators' },
+  es: { code: 'es', label: 'Espagne', path: 'es/', data: 'operators' },
+  pt: { code: 'pt', label: 'Portugal', path: 'pt/', data: 'operators' },
+  be: { code: 'be', label: 'Belgique', path: 'be/', data: 'operators' },
+  lu: { code: 'lu', label: 'Luxembourg', path: 'lu/', data: 'operators' },
+  it: { code: 'it', label: 'Italie', path: '', data: 'networks' },
+  ch: { code: 'ch', label: 'Suisse', path: '', data: 'networks' },
 };
 
 export const COUNTRY_CODES = Object.keys(COUNTRIES) as CountryCode[];
@@ -27,7 +34,7 @@ export const COUNTRY_CODES = Object.keys(COUNTRIES) as CountryCode[];
 export const isCountryCode = (c: unknown): c is CountryCode => typeof c === 'string' && c in COUNTRIES;
 
 /** Codes ISO (2 et 3 lettres) et débuts de noms (français, anglais, espagnol, catalan). */
-const ISO_CODES: Record<string, CountryCode> = { fr: 'fr', fra: 'fr', es: 'es', esp: 'es', pt: 'pt', prt: 'pt', be: 'be', bel: 'be', lu: 'lu', lux: 'lu' };
+const ISO_CODES: Record<string, CountryCode> = { fr: 'fr', fra: 'fr', es: 'es', esp: 'es', pt: 'pt', prt: 'pt', be: 'be', bel: 'be', lu: 'lu', lux: 'lu', it: 'it', ita: 'it', ch: 'ch', che: 'ch' };
 const NAME_PREFIXES: [string, CountryCode][] = [
   ['france', 'fr'],
   ['francia', 'fr'],
@@ -42,6 +49,16 @@ const NAME_PREFIXES: [string, CountryCode][] = [
   ['belgien', 'be'],
   ['luxembourg', 'lu'],
   ['luxemburg', 'lu'],
+  ['italie', 'it'],
+  ['italy', 'it'],
+  ['italia', 'it'],
+  ['italien', 'it'],
+  ['suisse', 'ch'],
+  ['switzerland', 'ch'],
+  ['schweiz', 'ch'],
+  ['svizzera', 'ch'],
+  ['suiza', 'ch'],
+  ['svizra', 'ch'],
 ];
 
 /**
@@ -64,7 +81,7 @@ export function countryFromHost(hostname: string | undefined): CountryCode | nul
   return isCountryCode(tld) ? tld : null;
 }
 
-/** Dossier des tuiles d'un pays (URL absolue terminée par « / »). */
+/** Dossier des tuiles d'un pays à couverture par opérateur (URL absolue terminée par « / »). */
 export const tilesBaseFor = (root: string, country: CountryCode) => new URL(COUNTRIES[country].path, root).href;
 
 function inRing(ring: number[][], x: number, y: number): boolean {
@@ -92,22 +109,31 @@ function distanceKm(ring: number[][], x: number, y: number): number {
   return best;
 }
 
-/** Espagne avant France (enclave de Llívia, cf. countryAt). */
-const SEARCH_ORDER: CountryCode[] = ['es', 'fr', 'pt', 'be', 'lu'];
+/** Espagne avant France (enclave de Llívia), Italie avant Suisse (Campione d'Italia), cf. countryAt. */
+const SEARCH_ORDER: CountryCode[] = ['es', 'fr', 'pt', 'be', 'lu', 'it', 'ch'];
+
+/** Territoires non pris en charge, trous de nos contours ou coincés entre eux : testés en premier. */
+const ENCLAVES = ['ad', 'mc', 'sm', 'va', 'busingen'];
+/** Voisins non pris en charge : testés après nos pays, avant la tolérance côtière (Constance n'est pas en Suisse). */
+const NEIGHBOURS = ['li', 'de', 'at', 'nl', 'si'];
+const inAny = (codes: string[], lng: number, lat: number) => codes.some((code) => BORDERS[code]?.some((ring) => inRing(ring, lng, lat)));
 
 /** Au-delà, un point hors des contours n'est rattaché à aucun pays (pleine mer). */
 const COAST_TOLERANCE_KM = 5;
+/** En deçà, un point chez un voisin reste rattaché à notre pays le plus proche (imprécision des contours). */
+const BORDER_MARGIN_KM = 0.5;
 
 /**
  * Pays d'un point (contours simplifiés à ~30 m), ou null hors des pays pris
- * en charge (Andorre, pleine mer…).
+ * en charge (Andorre, Allemagne, pleine mer…).
  *  - L'Espagne est testée avant la France : son enclave de Llívia est un trou
- *    du contour français, non représenté.
+ *    du contour français, non représenté ; de même l'Italie avant la Suisse.
  *  - Un point juste hors des contours (logement en bord de mer, littoral
- *    simplifié) est rattaché au pays le plus proche, à moins de 5 km.
+ *    simplifié) est rattaché au pays le plus proche, à moins de 5 km, sauf
+ *    s'il tombe chez un voisin non pris en charge (Allemagne, Autriche…).
  */
 export function countryAt(lng: number, lat: number): CountryCode | null {
-  if (BORDERS.ad?.some((ring) => inRing(ring, lng, lat))) return null;
+  if (inAny(ENCLAVES, lng, lat)) return null;
   for (const code of SEARCH_ORDER) {
     if (BORDERS[code]?.some((ring) => inRing(ring, lng, lat))) return code;
   }
@@ -119,5 +145,7 @@ export function countryAt(lng: number, lat: number): CountryCode | null {
       if (d < best) (best = d), (nearest = code);
     }
   }
+  // Chez un voisin, sauf tout contre la frontière (contours au 1:1 000 000 : Schengen, au bord de la Moselle).
+  if (best > BORDER_MARGIN_KM && inAny(NEIGHBOURS, lng, lat)) return null;
   return nearest;
 }

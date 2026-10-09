@@ -132,6 +132,12 @@ const zh: Messages = {
   cardReady: '结果已就绪：点击地址栏中扩展的橙色图标查看。',
   sourcesFor: '来源：{country}',
   srcCoverage: '覆盖：{source}{dates}。',
+  areaNetworks: "{d} 范围内最常见的值",
+  networksTitle: "此处覆盖的网络",
+  outOf: "{total} 个中的 {n} 个",
+  unnamedOps: "运营商：{ops}。官方地图未说明是哪几家。",
+  mapNetworks: "{techno} 网络数量",
+  legend_networks: "意大利、瑞士：显示覆盖的网络数量，官方地图未说明是哪几家。",
   srcAddressesMaps: '地址：{geocoder}。底图：{basemap}。',
 };
 

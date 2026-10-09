@@ -132,6 +132,12 @@ const ar: Messages = {
   cardReady: 'النتيجة جاهزة: انقر على الأيقونة البرتقالية للإضافة في شريط العنوان.',
   sourcesFor: 'المصادر: {country}',
   srcCoverage: 'التغطية: {source}{dates}.',
+  areaNetworks: "القيمة الأكثر تكرارًا ضمن دائرة نصف قطرها {d}",
+  networksTitle: "الشبكات المتاحة هنا",
+  outOf: "{n} من {total}",
+  unnamedOps: "المشغلون: {ops}. لا تحدد الخريطة الرسمية أيّها.",
+  mapNetworks: "عدد شبكات {techno}",
+  legend_networks: "إيطاليا وسويسرا: عدد الشبكات المتاحة، إذ لا تحدد الخريطة الرسمية أيّها.",
   srcAddressesMaps: 'العناوين: {geocoder}. الخريطة الأساسية: {basemap}.',
 };
 

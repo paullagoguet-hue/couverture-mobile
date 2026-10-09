@@ -73,6 +73,25 @@ const CASES: Case[] = [
     query: `page=${JSON.stringify({ name: 'Appartement', address: 'Luxembourg', lat: 49.6116, lng: 6.1319, precision: 'approximate', radiusM: 1000 })}`,
     expect: { titre: 'Luxembourg', note: /1 km/, fromPage: true },
   },
+  { name: 'Italie : adresse (pays choisi)', query: 'pays=it&q=Via del Corso 100, Roma', expect: { titre: 'Via del Corso 100' } },
+  { name: 'Italie : clic droit sur un site .it', query: 'q=Via Toledo 256, Napoli&url=https://www.immobiliare.it/annunci/1', expect: { titre: 'Via Toledo 256' } },
+  {
+    name: 'Italie : annonce avec coordonnées',
+    query: `page=${JSON.stringify({ name: 'Appartamento', address: 'Siena', lat: 43.3188, lng: 11.3308, precision: 'approximate', radiusM: 1000 })}`,
+    expect: { titre: 'Siena', note: /1 km/, fromPage: true },
+  },
+  { name: 'Suisse : adresse (pays choisi)', query: 'pays=ch&q=Bahnhofstrasse 10, Zürich', expect: { titre: 'Bahnhofstrasse 10' } },
+  { name: 'Suisse : clic droit sur un site .ch', query: 'q=Rue du Rhône 50, Genève&url=https://www.homegate.ch/louer/1', expect: { titre: 'Rue du Rhône 50' } },
+  {
+    name: 'Suisse : annonce avec coordonnées',
+    query: `page=${JSON.stringify({ name: 'Wohnung', address: 'Lugano', lat: 46.0037, lng: 8.9511, precision: 'approximate', radiusM: 1000 })}`,
+    expect: { titre: 'Lugano', note: /1 km/, fromPage: true },
+  },
+  {
+    name: 'Micro-État (Saint-Marin) : pays non couvert',
+    query: `page=${JSON.stringify({ name: 'Hotel', address: 'San Marino', lat: 43.9333, lng: 12.4467 })}`,
+    expect: { titre: 'Pays non couvert', fromPage: true },
+  },
   { name: 'Anglais : commune', query: 'lang=en&q=Bonneval-sur-Arc', expect: { titre: 'Bonneval-sur-Arc', note: /250 residents/ } },
   {
     name: 'Espagnol : annonce à Madrid',
@@ -105,7 +124,8 @@ const browser = await launch();
 console.log(`Extension chargée : ${browser.extensionId}\n`);
 let failures = 0;
 try {
-  for (const c of CASES) {
+  // E2E_ONLY=<texte> : seulement les cas dont le nom le contient.
+  for (const c of CASES.filter((c) => !process.env.E2E_ONLY || c.name.includes(process.env.E2E_ONLY))) {
     // Français et pays choisi « France » sauf indication contraire : la langue du navigateur
     // de test peut varier, et le pays choisi est mémorisé d'un test à l'autre.
     const defaults = ['lang=fr', 'choisi=fr'].filter((d) => !new RegExp(`(^|&)${d.split('=')[0]}=`).test(c.query ?? ''));
@@ -115,7 +135,7 @@ try {
       await sleep(1500);
       await page.evaluate(`(async () => { ${c.actions} })()`);
     }
-    await sleep(7000);
+    await sleep(Number(process.env.E2E_WAIT_MS ?? 7000));
     const r = await page.evaluate<{
       titre: string;
       verdicts: string[];

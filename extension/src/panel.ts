@@ -6,8 +6,9 @@
  * verdict par opérateur, le meilleur opérateur et une mini-carte.
  * Hors extension (tests), la requête peut être passée en paramètre : panel.html?q=…
  *
- * Plusieurs pays (France, Espagne) : chacun a ses tuiles, son manifeste (donc
- * ses opérateurs) et son géocodeur. Le pays est fixé AVANT de chercher
+ * Plusieurs pays : chacun a son géocodeur, et ses tuiles et son manifeste
+ * (donc ses opérateurs) — ou, en Italie et en Suisse, seulement le nombre de
+ * réseaux, lu en direct aux services officiels (cf. networks.ts). Le pays est fixé AVANT de chercher
  * l'adresse, dans cet ordre :
  *  1. coordonnées publiées par l'annonce → pays du point (countryAt) ;
  *  2. pays écrit à la fin du texte (« …, Portugal »), ou publié par l'annonce
@@ -35,10 +36,15 @@ import {
   CoverageReader,
   geocode,
   isCountryCode,
+  isNetworkCountry,
   isUnambiguous,
   loadCommuneCoverage,
   loadManifest,
+  NETWORK_COLORS,
+  NETWORK_SOURCES,
+  networkKind,
   operatorStatus,
+  readNetworks,
   resolvePlace,
   SHARED_FETCH_TIMEOUT_MS,
   summarizeByOperator,
@@ -47,6 +53,9 @@ import {
   type GeocodeResult,
   type LayerCoverage,
   type Manifest,
+  type NetworkCount,
+  type NetworkCountry,
+  type NetworkTechno,
 } from '@couverture/core';
 
 import { api, PENDING_KEY, type PendingQuery } from './browser.ts';
@@ -82,6 +91,8 @@ const PRODUCERS: Record<CountryCode, string> = {
   pt: 'ANACOM',
   be: 'IBPT-BIPT',
   lu: 'ILR',
+  it: 'AGCOM',
+  ch: 'OFCOM',
 };
 
 const readers = new Map<CountryCode, CoverageReader>();
@@ -199,7 +210,7 @@ function setCountry(c: CountryCode, remember = true) {
   search.close();
   if (remember) void api?.storage.local.set({ [COUNTRY_KEY]: c }).catch(() => {});
   // Opérateurs du pays chargés dès maintenant : la recherche suivante sera plus rapide.
-  getManifest(c).catch(() => {});
+  if (!isNetworkCountry(c)) getManifest(c).catch(() => {});
 }
 
 // --- Accueil --------------------------------------------------------------------
@@ -211,6 +222,8 @@ const EXAMPLES: [string, CountryCode][] = [
   ['Rua Augusta 100, Lisboa', 'pt'],
   ['Rue Neuve 1, Bruxelles', 'be'],
   ['Place Guillaume II, Luxembourg', 'lu'],
+  ['Piazza Navona, Roma', 'it'],
+  ['Bahnhofstrasse 10, Zürich', 'ch'],
 ];
 
 /** Accueil : explication, trois façons de vérifier, exemples. */
@@ -352,6 +365,11 @@ async function showCoverage(place: GeocodeResult, r: Run) {
   try {
     // Position parfois donnée en deux temps par le géocodeur (Espagne).
     const located = await resolvePlace(place, signal);
+    if (isNetworkCountry(c)) {
+      const counts = await readNetworks(c, located.lng, located.lat, { radiusM: r.radiusM, signal });
+      if (r.signal.aborted) return;
+      return renderNetworks(located, c, counts, r);
+    }
     const manifest = await abortable(getManifest(c), signal);
     // Commune sans adresse précise : parts d'habitants précalculées sur tout son
     // territoire si elles sont publiées (France), sinon couverture au point central.
@@ -376,7 +394,7 @@ async function showCoverage(place: GeocodeResult, r: Run) {
         error: true,
         title: t('coverageUnavailable'),
         body: `<p>${timedOut ? t('serverNoResponse') : t('serverUnreachable')} ${t('retrySoon')}</p>
-               <p class="detail">${escapeHtml(new URL(TILES_BASE_URL).origin)} · ${escapeHtml((err as Error).message)}</p>`,
+               <p class="detail">${isNetworkCountry(c) ? PRODUCERS[c] : escapeHtml(new URL(TILES_BASE_URL).origin)} · ${escapeHtml((err as Error).message)}</p>`,
         action: `<button class="btn" id="retry" type="button">${ICONS.retry}${t('retry')}</button>`,
       },
       r.note,
@@ -427,13 +445,7 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
   const fullMap = c === 'fr';
 
   show(
-    `<section class="card">
-      <div class="place-head">${ICONS.pin}<h2>${escapeHtml(place.label)}</h2><span class="flag" title="${countryName(c)}">${FLAGS[c]}</span></div>
-      ${areaNote ? `<p class="area-note">${areaNote}</p>` : ''}
-      ${['municipality', 'locality'].includes(place.type) && !r.note && zone !== 'commune' // le bandeau de la page le dit déjà
-        ? `<p class="warning">${t('communeCenter')}</p>`
-        : ''}
-    </section>
+    `${placeHead(place, r, areaNote, zone === 'commune')}
     <section class="card">
       <p class="best-text">${best.length && !allTied ? ICONS.star : ''}<span>${bestText}</span></p>
       <ul class="operators">${rows}</ul>
@@ -475,6 +487,81 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
   const defaultOp = best[0] ?? summaries[0];
   const fallback = defaultOp.byTechno['4g'] ?? Object.values(defaultOp.byTechno)[0];
   select(statuses.get(defaultOp.operator)!.layerId ?? fallback.layer.id);
+}
+
+/** En-tête commun d'un résultat : lieu, drapeau, zone évaluée, avertissement « centre de la commune ». */
+function placeHead(place: GeocodeResult, r: Run, areaNote: string, communeZone = false) {
+  const c = place.country;
+  return `<section class="card">
+      <div class="place-head">${ICONS.pin}<h2>${escapeHtml(place.label)}</h2><span class="flag" title="${countryName(c)}">${FLAGS[c]}</span></div>
+      ${areaNote ? `<p class="area-note">${areaNote}</p>` : ''}
+      ${['municipality', 'locality'].includes(place.type) && !r.note && !communeZone // le bandeau de la page le dit déjà
+        ? `<p class="warning">${t('communeCenter')}</p>`
+        : ''}
+    </section>`;
+}
+
+/**
+ * Italie, Suisse : nombre de réseaux qui couvrent (5G, 4G), sans dire lesquels.
+ * Une ligne par techno ; un clic montre sa carte officielle.
+ */
+function renderNetworks(place: GeocodeResult, c: NetworkCountry, counts: NetworkCount[], r: Run) {
+  const source = NETWORK_SOURCES[c];
+  const pct = (v: number) => new Intl.NumberFormat(locale(), { style: 'percent', maximumFractionDigits: 0 }).format(v);
+  const rows = counts
+    .map((n) => {
+      const colors = NETWORK_COLORS[networkKind(n)];
+      const label = n.count ? t('outOf', { n: formatNumber(n.count), total: formatNumber(n.total) }) : t('status_none');
+      // Infobulle sur une zone : répartition (« 3 sur 4 : 80 %, 2 sur 4 : 20 % »).
+      const detail = n.area
+        ? Object.entries(n.area.shares)
+            .sort((a, b) => Number(b[0]) - Number(a[0]))
+            .map(([k, v]) => `${Number(k) ? t('outOf', { n: formatNumber(Number(k)), total: formatNumber(n.total) }) : t('status_none')} : ${pct(v)}`)
+            .join(', ')
+        : '';
+      return `<li><button type="button" class="cell" data-techno="${n.techno}"${detail ? ` title="${escapeHtml(detail)}"` : ''}>
+          <span class="op-name">${n.techno.toUpperCase()}</span>
+          <span class="pill" style="background:${colors.color};color:${colors.textColor}">${escapeHtml(label)}</span>
+        </button></li>`;
+    })
+    .join('');
+  const area = counts[0]?.area;
+  const areaNote = area ? t('areaNetworks', { d: formatDistance(area.radiusM) }) : '';
+  // Couleurs de la carte officielle ; une même couleur pour plusieurs nombres (Suisse : « 1–2 ») est groupée.
+  const legend = source.colors
+    .map((color, i) => ({ color, from: i + 1, to: source.colors.lastIndexOf(color) + 1 }))
+    .filter((g, i) => source.colors.indexOf(g.color) === i)
+    .map((g) => `<span class="swatch" style="background:${g.color}"></span>${formatNumber(g.from)}${g.to > g.from ? `–${formatNumber(g.to)}` : ''}`)
+    .join(' ');
+
+  show(
+    `${placeHead(place, r, areaNote)}
+    <section class="card">
+      <p class="best-text"><span>${t('networksTitle')}</span></p>
+      <ul class="operators">${rows}</ul>
+      <p class="hint">${escapeHtml(t('unnamedOps', { ops: new Intl.ListFormat(locale(), { type: 'conjunction' }).format(source.operators) }))}</p>
+    </section>
+    <section class="card">
+      <p class="map-caption">${t('mapCaption')} <strong id="map-layer"></strong> <small class="map-legend">${legend}</small></p>
+      <div id="minimap-slot"></div>
+    </section>
+    <p class="source">${t('sourceLine', { source: PRODUCERS[c] })} · <button type="button" class="link" data-info>${t('infoLink')}</button></p>
+    <div id="encart-slot"></div>`,
+    r.note,
+  );
+
+  out.querySelector('[data-info]')!.addEventListener('click', () => void info.show());
+  const miniMap = attachMiniMap(document.getElementById('minimap-slot')!, c);
+  void fillEncart(document.getElementById('encart-slot')!);
+  const select = (techno: NetworkTechno) => {
+    out.querySelectorAll<HTMLElement>('.cell').forEach((b) => b.classList.toggle('selected', b.dataset.techno === techno));
+    document.getElementById('map-layer')!.textContent = t('mapNetworks', { techno: techno.toUpperCase() });
+    const shapes = counts.find((n) => n.techno === techno)?.shapes;
+    miniMap?.showNetworks(source, techno, shapes, place.lng, place.lat, 13).catch(console.error);
+  };
+  out.querySelectorAll<HTMLButtonElement>('.cell').forEach((b) => b.addEventListener('click', () => select(b.dataset.techno as NetworkTechno)));
+  // Par défaut : la 5G si au moins un réseau, sinon la 4G.
+  select(counts.find((n) => n.techno === '5g')?.count ? '5g' : '4g');
 }
 
 /**

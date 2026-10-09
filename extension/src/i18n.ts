@@ -167,6 +167,12 @@ const fr = {
   cardReady: "Résultat prêt : cliquez sur l'icône orange de l'extension, dans la barre d'adresse, pour l'afficher.",
   sourcesFor: 'Sources : {country}',
   srcCoverage: 'Couverture : {source}{dates}.',
+  areaNetworks: "Valeur la plus fréquente dans un rayon de {d}",
+  networksTitle: "Réseaux qui couvrent ici",
+  outOf: "{n} sur {total}",
+  unnamedOps: "Opérateurs : {ops}. La carte officielle ne dit pas lesquels.",
+  mapNetworks: "nombre de réseaux {techno}",
+  legend_networks: "Italie, Suisse : nombre de réseaux qui couvrent, la carte officielle ne disant pas lesquels.",
   srcAddressesMaps: 'Adresses : {geocoder}. Fond de carte : {basemap}.',
 };
 
@@ -304,6 +310,12 @@ const en: Messages = {
   cardReady: 'Result ready: click the orange extension icon in the address bar to see it.',
   sourcesFor: 'Sources: {country}',
   srcCoverage: 'Coverage: {source}{dates}.',
+  areaNetworks: "Most common value within {d}",
+  networksTitle: "Networks covering here",
+  outOf: "{n} of {total}",
+  unnamedOps: "Operators: {ops}. The official map does not say which ones.",
+  mapNetworks: "number of {techno} networks",
+  legend_networks: "Italy, Switzerland: number of networks covering, as the official map does not say which ones.",
   srcAddressesMaps: 'Addresses: {geocoder}. Base map: {basemap}.',
 };
 
@@ -438,6 +450,12 @@ const es: Messages = {
   cardReady: 'Resultado listo: haz clic en el icono naranja de la extensión, en la barra de direcciones, para verlo.',
   sourcesFor: 'Fuentes: {country}',
   srcCoverage: 'Cobertura: {source}{dates}.',
+  areaNetworks: "Valor más frecuente en un radio de {d}",
+  networksTitle: "Redes que cubren aquí",
+  outOf: "{n} de {total}",
+  unnamedOps: "Operadores: {ops}. El mapa oficial no dice cuáles.",
+  mapNetworks: "número de redes {techno}",
+  legend_networks: "Italia, Suiza: número de redes que cubren, ya que el mapa oficial no dice cuáles.",
   srcAddressesMaps: 'Direcciones: {geocoder}. Mapa base: {basemap}.',
 };
 
@@ -572,6 +590,12 @@ const de: Messages = {
   cardReady: 'Ergebnis bereit: Klicken Sie auf das orange Symbol der Erweiterung in der Adressleiste.',
   sourcesFor: 'Quellen: {country}',
   srcCoverage: 'Abdeckung: {source}{dates}.',
+  areaNetworks: "Häufigster Wert im Umkreis von {d}",
+  networksTitle: "Netze an diesem Ort",
+  outOf: "{n} von {total}",
+  unnamedOps: "Betreiber: {ops}. Die offizielle Karte sagt nicht, welche.",
+  mapNetworks: "Anzahl {techno}-Netze",
+  legend_networks: "Italien, Schweiz: Anzahl der Netze, da die offizielle Karte nicht sagt, welche.",
   srcAddressesMaps: 'Adressen: {geocoder}. Grundkarte: {basemap}.',
 };
 
@@ -706,6 +730,12 @@ const it: Messages = {
   cardReady: "Risultato pronto: clicca sull'icona arancione dell'estensione, nella barra degli indirizzi.",
   sourcesFor: 'Fonti: {country}',
   srcCoverage: 'Copertura: {source}{dates}.',
+  areaNetworks: "Valore più frequente in un raggio di {d}",
+  networksTitle: "Reti che coprono qui",
+  outOf: "{n} su {total}",
+  unnamedOps: "Operatori: {ops}. La mappa ufficiale non dice quali.",
+  mapNetworks: "numero di reti {techno}",
+  legend_networks: "Italia, Svizzera: numero di reti che coprono, perché la mappa ufficiale non dice quali.",
   srcAddressesMaps: 'Indirizzi: {geocoder}. Mappa di base: {basemap}.',
 };
 

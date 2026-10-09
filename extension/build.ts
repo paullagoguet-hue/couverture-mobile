@@ -31,10 +31,22 @@ const photonUrl = env.VITE_PHOTON_URL ?? 'http://127.0.0.1:2322/api';
  * Services contactés, en plus de l'hébergement des tuiles :
  *  - data.geopf.fr : géocodage et fond de carte en France (IGN) ;
  *  - www.cartociudad.es : géocodage en Espagne (IGN España) ;
- *  - notre serveur Photon : géocodage au Portugal et en Belgique (OpenStreetMap) ;
- *  - tiles.openfreemap.org : fond de carte hors de France (OpenStreetMap).
+ *  - notre serveur Photon : géocodage au Portugal, en Belgique, au Luxembourg, en Italie (OpenStreetMap) ;
+ *  - tiles.openfreemap.org : fond de carte hors de France (OpenStreetMap) ;
+ *  - geo3.agcom.it : nombre de réseaux en Italie et images de la carte (AGCOM) ;
+ *  - api3.geo.admin.ch, data.geo.admin.ch, wmts.geo.admin.ch : géocodage, nombre
+ *    de réseaux et images de la carte en Suisse (swisstopo, OFCOM).
  */
-const SERVICE_ORIGINS = ['https://data.geopf.fr', 'https://www.cartociudad.es', new URL(photonUrl).origin, 'https://tiles.openfreemap.org'];
+const SERVICE_ORIGINS = [
+  'https://data.geopf.fr',
+  'https://www.cartociudad.es',
+  new URL(photonUrl).origin,
+  'https://tiles.openfreemap.org',
+  'https://geo3.agcom.it',
+  'https://api3.geo.admin.ch',
+  'https://data.geo.admin.ch',
+  'https://wmts.geo.admin.ch',
+];
 
 /**
  * CSP des pages de l'extension. `connect-src` liste les SEULES origines que

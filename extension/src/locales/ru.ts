@@ -132,6 +132,12 @@ const ru: Messages = {
   cardReady: 'Результат готов: нажмите на оранжевый значок расширения в адресной строке.',
   sourcesFor: 'Источники: {country}',
   srcCoverage: 'Покрытие: {source}{dates}.',
+  areaNetworks: "Наиболее частое значение в радиусе {d}",
+  networksTitle: "Сети, покрывающие это место",
+  outOf: "{n} из {total}",
+  unnamedOps: "Операторы: {ops}. Официальная карта не уточняет, какие именно.",
+  mapNetworks: "число сетей {techno}",
+  legend_networks: "Италия, Швейцария: число сетей с покрытием — официальная карта не уточняет, какие именно.",
   srcAddressesMaps: 'Адреса: {geocoder}. Базовая карта: {basemap}.',
 };
 

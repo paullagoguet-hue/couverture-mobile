@@ -8,8 +8,8 @@
  *   curl -LO https://gisco-services.ec.europa.eu/distribution/v2/countries/geojson/CNTR_RG_01M_2020_4326.geojson
  *   node scripts/make-borders.ts CNTR_RG_01M_2020_4326.geojson
  *
- * Simplification Douglas-Peucker à ~30 m. Andorre est gardée pour être
- * exclue (ni France ni Espagne). Le littoral simplifié peut laisser un
+ * Simplification Douglas-Peucker à ~30 m. Andorre, l'Allemagne… sont gardées
+ * pour être exclues (ni France ni Espagne, ni Suisse…). Le littoral simplifié peut laisser un
  * logement de bord de mer « en mer » : countryAt prend alors le pays le plus proche.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -17,16 +17,38 @@ import { resolve } from 'node:path';
 
 type Ring = [number, number][];
 
-/** Pays : identifiant GISCO et emprise utile (France : métropole + Corse). */
-const COUNTRIES: Record<string, { id: string; bbox?: [number, number, number, number] }> = {
+/**
+ * Pays : identifiant GISCO et emprise utile (France : métropole + Corse).
+ * Rôle (cf. countryAt) :
+ *  - « enclave » : territoire non pris en charge testé AVANT nos pays, car
+ *    trou de leur contour (Saint-Marin, Vatican, Büsingen) ou coincé entre
+ *    eux (Andorre, Monaco) ; contour précis, aucun îlot ignoré ;
+ *  - « voisin » : testé APRÈS nos pays, pour ne pas rattacher un point voisin
+ *    au pays le plus proche (Constance n'est pas en Suisse) ; contour grossier
+ *    (~100 m) suffisant, puisque nos pays passent avant.
+ */
+type Role = 'enclave' | 'voisin';
+const COUNTRIES: Record<string, { id: string; bbox?: [number, number, number, number]; role?: Role }> = {
   fr: { id: 'FR', bbox: [-6, 41, 10, 52] },
   es: { id: 'ES' },
   pt: { id: 'PT' },
   be: { id: 'BE' },
   lu: { id: 'LU' },
-  ad: { id: 'AD' },
+  it: { id: 'IT' },
+  ch: { id: 'CH' },
+  ad: { id: 'AD', role: 'enclave' },
+  mc: { id: 'MC', role: 'enclave' },
+  sm: { id: 'SM', role: 'enclave' },
+  va: { id: 'VA', role: 'enclave' },
+  busingen: { id: 'DE', role: 'enclave', bbox: [8.6, 47.6, 8.8, 47.75] },
+  li: { id: 'LI', role: 'voisin' },
+  de: { id: 'DE', role: 'voisin' },
+  at: { id: 'AT', role: 'voisin' },
+  nl: { id: 'NL', role: 'voisin', bbox: [2, 50, 8, 54] },
+  si: { id: 'SI', role: 'voisin' },
 };
 const TOLERANCE = 0.0003; // degrés (~30 m)
+const TOLERANCE_NEIGHBOUR = 0.001; // degrés (~100 m)
 const MIN_AREA = 0.0001; // degrés² (~1 km²) : îlots plus petits ignorés
 
 function simplify(points: Ring, tol: number): Ring {
@@ -68,7 +90,7 @@ const inBbox = (r: Ring, [x0, y0, x1, y1]: number[]) => r.every(([x, y]) => x >=
 
 const src = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const out: Record<string, number[][][]> = {};
-for (const [code, { id, bbox }] of Object.entries(COUNTRIES)) {
+for (const [code, { id, bbox, role }] of Object.entries(COUNTRIES)) {
   const feature = src.features.find((f: any) => f.properties.CNTR_ID === id);
   if (!feature) throw new Error(`${id} absent`);
   const polys: Ring[][] = feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
@@ -76,8 +98,8 @@ for (const [code, { id, bbox }] of Object.entries(COUNTRIES)) {
   // est aussi un polygone espagnol ; countryAt teste donc l'Espagne avant la France.
   out[code] = polys
     .map((p) => p[0])
-    .filter((r) => area(r) >= MIN_AREA && (!bbox || inBbox(r, bbox)))
-    .map((r) => simplifyRing(r, TOLERANCE).map(([x, y]) => [Math.round(x * 1e4) / 1e4, Math.round(y * 1e4) / 1e4]));
+    .filter((r) => (role === 'enclave' || area(r) >= MIN_AREA) && (!bbox || inBbox(r, bbox)))
+    .map((r) => simplifyRing(r, role === 'voisin' ? TOLERANCE_NEIGHBOUR : TOLERANCE).map(([x, y]) => [Math.round(x * 1e4) / 1e4, Math.round(y * 1e4) / 1e4]));
   console.log(`${code} : ${out[code].length} polygones, ${out[code].reduce((s, r) => s + r.length, 0)} points`);
 }
 

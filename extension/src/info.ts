@@ -4,7 +4,16 @@
  * Affichée à la place du résultat, qui reste intact derrière (mini-carte
  * comprise) : « Retour » le réaffiche tel quel.
  */
-import { STATUS_COLORS, type CountryCode, type Manifest, type StatusKind } from '@couverture/core';
+import {
+  NETWORK_COLORS,
+  networkDates,
+  STATUS_COLORS,
+  type CountryCode,
+  type Manifest,
+  type NetworkCountry,
+  type NetworkTechno,
+  type StatusKind,
+} from '@couverture/core';
 
 import { PRIVACY_URL } from './config.ts';
 import { formatDate, locale, t, type MessageKey } from './i18n.ts';
@@ -43,8 +52,12 @@ export class InfoPage {
     window.scrollTo(0, 0);
     // Dates des données : depuis les manifestes (déjà en cache après une recherche).
     // Hors ligne, la page s'affiche sans les dates.
-    const [fr, es, pt, be, lu] = await Promise.all((['fr', 'es', 'pt', 'be', 'lu'] as const).map((c) => this.getManifest(c).catch(() => undefined)));
-    if (this.visible) this.content.innerHTML = this.render({ fr, es, pt, be, lu });
+    // Italie, Suisse : pas de manifeste, dates lues aux services officiels.
+    const [[fr, es, pt, be, lu], [it, ch]] = await Promise.all([
+      Promise.all((['fr', 'es', 'pt', 'be', 'lu'] as const).map((c) => this.getManifest(c).catch(() => undefined))),
+      Promise.all((['it', 'ch'] as const).map((c) => networkDates(c, AbortSignal.timeout(10_000)))),
+    ]);
+    if (this.visible) this.content.innerHTML = this.render({ fr, es, pt, be, lu }, { it, ch });
   }
 
   hide() {
@@ -52,7 +65,17 @@ export class InfoPage {
     this.result.hidden = false;
   }
 
-  private render(manifests: Partial<Record<CountryCode, Manifest>>): string {
+  private render(
+    manifests: Partial<Record<CountryCode, Manifest>>,
+    networks: Partial<Record<NetworkCountry, Partial<Record<NetworkTechno, string>>>> = {},
+  ): string {
+    const networkDatesText = (c: NetworkCountry) => {
+      const text = (['4g', '5g'] as const)
+        .filter((techno) => networks[c]?.[techno])
+        .map((techno) => t('dateAt', { techno: techno.toUpperCase(), date: formatDate(networks[c]![techno]!) }))
+        .join(', ');
+      return text ? ` (${text})` : '';
+    };
     // La 4G et la 5G ne sont pas forcément publiées à la même date.
     const dates = (manifest: Manifest | undefined, key: 'dateAt' | 'datePublished') => {
       const text = ['4g', '5g']
@@ -70,6 +93,7 @@ export class InfoPage {
             `<li><span class="pill" style="background:${STATUS_COLORS[k].color};color:${STATUS_COLORS[k].textColor}">${t(label)}</span><span>${t(text)}</span></li>`,
         ).join('')}</ul>
         <p class="hint">${t('bestHint', { star: ICONS.star })}</p>
+        <p class="hint"><span class="pill" style="background:${NETWORK_COLORS.most.color};color:${NETWORK_COLORS.most.textColor}">${t('outOf', { n: 3, total: 4 })}</span> ${t('legend_networks')}</p>
       </section>
       <section class="card">
         <h3>${t('infoZone')}</h3>
@@ -113,6 +137,16 @@ export class InfoPage {
         <ul class="facts">
           <li>${t('srcCoverage', { source: 'ILR, « Relevé géographique des réseaux »', dates: dates(manifests.lu, 'dateAt') })}</li>
           <li>${t('srcAddressesMaps', { geocoder: 'Photon, © OpenStreetMap', basemap: 'OpenFreeMap, © OpenStreetMap' })}</li>
+        </ul>
+        <h3 class="next">${t('sourcesFor', { country: regionName('it') })}</h3>
+        <ul class="facts">
+          <li>${t('srcCoverage', { source: 'AGCOM, « Broadband Map »', dates: networkDatesText('it') })}</li>
+          <li>${t('srcAddressesMaps', { geocoder: 'Photon, © OpenStreetMap', basemap: 'OpenFreeMap, © OpenStreetMap' })}</li>
+        </ul>
+        <h3 class="next">${t('sourcesFor', { country: regionName('ch') })}</h3>
+        <ul class="facts">
+          <li>${t('srcCoverage', { source: 'OFCOM, « Atlas du haut débit »', dates: networkDatesText('ch') })}</li>
+          <li>${t('srcAddressesMaps', { geocoder: 'swisstopo (geo.admin.ch)', basemap: 'OpenFreeMap, © OpenStreetMap' })}</li>
         </ul>
         <p class="hint">${t('srcFooter')}</p>
       </section>

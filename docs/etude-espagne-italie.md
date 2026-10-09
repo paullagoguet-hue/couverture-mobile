@@ -134,8 +134,8 @@ TIM, Vodafone (fusionné avec Fastweb, groupe Swisscom), WindTre (CK Hutchison),
 | France | oui | niveaux (4G) | oui | en ligne |
 | Espagne | oui | 5G (champ VELOCIDAD) | par le service, 6 000 requêtes | construit |
 | Portugal | oui | oui, par classes | non (service seulement) | prochain candidat |
-| Italie | non (nombre) | non | sur demande | version allégée possible |
-| Suisse | non (nombre) | non | oui | version allégée possible |
+| Italie | non (nombre) | non | sur demande | **construit (0.24.0)** : nombre de réseaux lu en direct (zones AGCOM) |
+| Suisse | non (nombre) | non | oui | **construit (0.24.0)** : nombre de réseaux lu dans le GeoTIFF de l'OFCOM |
 
 ## Tour d'horizon (octobre 2026)
 
@@ -153,7 +153,7 @@ TIM, Vodafone (fusionné avec Fastweb, groupe Swisscom), WindTre (CK Hutchison),
 | Brésil | % par commune (Anatel) | non (pour l'instant) | pas de carte fine |
 | Mexique | carte participative (Ookla via IFT) | non | données privées, pas de téléchargement |
 | Argentine | rien | non | ENACOM ne publie pas par opérateur |
-| Italie, Suisse | nombre d'opérateurs seulement | version allégée possible | — |
+| Italie, Suisse | nombre d'opérateurs seulement | **construits** (« 3 sur 4 ») | — |
 
 Géocodage : Photon public (komoot) saturé par nos tests (blocage temporaire de
 l'adresse IP) : pour la production, un géocodeur Photon auto-hébergé (données
@@ -169,3 +169,11 @@ les pays sans géocodeur national ouvert.
 | Slovénie | cartes calculées (AKOS) | abandonné | portail protégé contre l'accès automatisé |
 | Autriche | collectées par la RTR | abandonné | portail réservé aux opérateurs, rien de public par opérateur |
 | Norvège, Danemark, Finlande, Croatie | non trouvé | abandonné pour l'instant | statistiques ou mesures seulement, pas de carte par opérateur téléchargeable |
+
+## Italie et Suisse : mise en œuvre (octobre 2026)
+
+- **Lecture en direct**, sans tuiles hébergées :
+  - Italie : une requête par techno au service AGCOM. Elle renvoie les zones autour du lieu ; le nombre est lu localement, et les zones sont dessinées sur la mini-carte. La couche « 5G_DSS » compte toute la 5G : elle a partout au moins autant de réseaux que la couche « 5G » (45 points testés).
+  - Suisse : GeoTIFF optimisé de l'OFCOM (3 Mo), lu par morceaux (requêtes Range, décompression LZW). Les adresses viennent de swisstopo (geo.admin.ch).
+- **Images AGCOM non utilisées.** Une partie des zones y manque : leurs contours sont enregistrés à l'envers (convention ArcGIS) et sont ignorés au rendu. Sur 19 points, 4 étaient affichés « sans réseau » alors que la donnée en compte 2 ou 3. La règle pair-impair donne 0 écart sur 38 points.
+- **Micro-États** (Saint-Marin, Vatican, Monaco, Andorre, Liechtenstein) : ils sont absents des données des régulateurs voisins, qui y indiquent 0 réseau. Comme ils ont leurs propres opérateurs, ils sont exclus et l'extension affiche « pays non couvert ».

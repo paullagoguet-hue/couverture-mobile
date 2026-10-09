@@ -8,13 +8,14 @@
  */
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { FILL_COLOR_EXPRESSION, SOURCE_LAYER, type CountryCode, type LayerInfo } from '@couverture/core';
+import { FILL_COLOR_EXPRESSION, SOURCE_LAYER, type CountryCode, type LayerInfo, type NetworkShapes, type NetworkSource, type NetworkTechno } from '@couverture/core';
 import {
   addProtocol,
   AttributionControl,
   Map as MapLibreMap,
   Marker,
   NavigationControl,
+  type GeoJSONSource,
   setWorkerUrl,
   type ExpressionSpecification,
 } from 'maplibre-gl';
@@ -31,7 +32,12 @@ const BASEMAPS: Record<CountryCode, { style: string; attribution: string }> = {
   pt: { style: 'https://tiles.openfreemap.org/styles/positron', attribution: '© ANACOM' },
   be: { style: 'https://tiles.openfreemap.org/styles/positron', attribution: '© IBPT-BIPT' },
   lu: { style: 'https://tiles.openfreemap.org/styles/positron', attribution: '© ILR' },
+  it: { style: 'https://tiles.openfreemap.org/styles/positron', attribution: '© AGCOM' },
+  ch: { style: 'https://tiles.openfreemap.org/styles/positron', attribution: '© OFCOM, swisstopo' },
 };
+
+/** Images des cartes officielles (Italie, Suisse) : lisibles à partir de ce zoom. */
+const NETWORKS_MIN_ZOOM = 7;
 
 setWorkerUrl(maplibreWorkerUrl);
 addProtocol('pmtiles', new Protocol().tile);
@@ -118,9 +124,46 @@ export class MiniMap {
     map.setLayoutProperty(id, 'visibility', 'visible');
     this.shownLayer = id;
 
-    this.marker.setLngLat([lng, lat]).addTo(map);
-    // Zoom 13 : quartier / village ; 11 : commune. Jamais sous le zoom mini des tuiles.
-    map.jumpTo({ center: [lng, lat], zoom: Math.max(zoom, layer.tiles.minzoom ?? 0) });
+    // Pas de dézoom sous le zoom mini des tuiles : la couverture y disparaîtrait
+    // (4G et Espagne : zoom 10, soit environ 40 km de large).
+    this.center(lng, lat, zoom, layer.tiles.minzoom ?? 0);
+  }
+
+  /**
+   * Nombre de réseaux (Italie, Suisse), sous les libellés du fond de carte :
+   * zones lues autour du lieu (`shapes`, Italie), sinon images de la carte
+   * officielle (Suisse), aux couleurs de la légende officielle.
+   */
+  async showNetworks(source: NetworkSource, techno: NetworkTechno, shapes: NetworkShapes | undefined, lng: number, lat: number, zoom = 13) {
+    this.setCountry(source.country);
+    await this.ready;
+    const map = this.map;
+    const id = `${source.country}:reseaux-${techno}`;
+    const firstLabel = () => map.getStyle().layers.find((l) => l.type === 'symbol')?.id;
+    if (shapes) {
+      // Zones propres à ce lieu : remplacées à chaque recherche.
+      const existing = map.getSource(id) as GeoJSONSource | undefined;
+      if (existing) existing.setData(shapes as GeoJSON.FeatureCollection);
+      else {
+        map.addSource(id, { type: 'geojson', data: shapes as GeoJSON.FeatureCollection });
+        const color = ['match', ['get', 'n'], ...source.colors.flatMap((c, i) => [i + 1, c]), 'transparent'] as unknown as ExpressionSpecification;
+        map.addLayer({ id, type: 'fill', source: id, paint: { 'fill-color': color, 'fill-opacity': 0.55 } }, firstLabel());
+      }
+    } else if (source.overlay && !map.getSource(id)) {
+      map.addSource(id, { type: 'raster', tiles: [source.overlay[techno]], tileSize: 256, maxzoom: 16 });
+      map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-opacity': 0.55 } }, firstLabel());
+    }
+    if (this.shownLayer && this.shownLayer !== id && map.getLayer(this.shownLayer)) map.setLayoutProperty(this.shownLayer, 'visibility', 'none');
+    map.setLayoutProperty(id, 'visibility', 'visible');
+    this.shownLayer = id;
+    this.center(lng, lat, zoom, NETWORKS_MIN_ZOOM);
+  }
+
+  private center(lng: number, lat: number, zoom: number, minZoom: number) {
+    this.map.setMinZoom(minZoom);
+    this.marker.setLngLat([lng, lat]).addTo(this.map);
+    // Zoom 13 : quartier / village ; 11 : commune.
+    this.map.jumpTo({ center: [lng, lat], zoom: Math.max(zoom, minZoom) });
   }
 
   private collapseAttribution() {

@@ -132,6 +132,12 @@ const nl: Messages = {
   cardReady: 'Resultaat klaar: klik op het oranje pictogram van de extensie in de adresbalk.',
   sourcesFor: 'Bronnen: {country}',
   srcCoverage: 'Dekking: {source}{dates}.',
+  areaNetworks: "Meest voorkomende waarde binnen {d}",
+  networksTitle: "Netwerken met dekking hier",
+  outOf: "{n} van {total}",
+  unnamedOps: "Operators: {ops}. De officiële kaart zegt niet welke.",
+  mapNetworks: "aantal {techno}-netwerken",
+  legend_networks: "Italië, Zwitserland: aantal netwerken met dekking, omdat de officiële kaart niet zegt welke.",
   srcAddressesMaps: 'Adressen: {geocoder}. Basiskaart: {basemap}.',
 };
 
