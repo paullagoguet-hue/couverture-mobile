@@ -23,6 +23,7 @@
 import {
   abortable,
   bestOperators,
+  configureGeocoders,
   cleanAddress,
   communeToCoverage,
   COUNTRY_CODES,
@@ -48,7 +49,7 @@ import {
 
 import { api, PENDING_KEY, type PendingQuery } from './browser.ts';
 import { CARD_ENABLED_KEY } from './messages.ts';
-import { SITE_URL, TILES_BASE_URL } from './config.ts';
+import { PHOTON_URL, SITE_URL, TILES_BASE_URL } from './config.ts';
 import { fillEncart } from './encart.ts';
 import { formatNumber, initLang, LANG_KEY, LANG_LABELS, LANGS, lang, locale, t, translatePage, type Lang } from './i18n.ts';
 import { FLAGS, HERO_SVG, ICONS } from './illustrations.ts';
@@ -56,6 +57,8 @@ import { InfoPage } from './info.ts';
 import { MiniMap } from './minimap.ts';
 import { SearchBox } from './search.ts';
 import { statusDetail, statusLabel } from './verdict-text.ts';
+
+configureGeocoders({ photonUrl: PHOTON_URL });
 
 const out = document.getElementById('result')!;
 let currentRun: AbortController | undefined;

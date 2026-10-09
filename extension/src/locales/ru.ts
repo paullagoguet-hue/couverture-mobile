@@ -111,7 +111,7 @@ const ru: Messages = {
   srcEsMaps: 'Адреса: CartoCiudad (IGN España). Базовая карта: OpenFreeMap, © OpenStreetMap.',
   sourcesPt: 'Источники: Португалия',
   srcPtCoverage: 'Покрытие: ANACOM, «GEO.ANACOM», оценочная скорость по классам; 5G — предварительные данные{dates}.',
-  srcPtMaps: 'Адреса: Photon (komoot), © OpenStreetMap. Базовая карта: OpenFreeMap, © OpenStreetMap.',
+  srcPtMaps: 'Адреса: Photon, © OpenStreetMap. Базовая карта: OpenFreeMap, © OpenStreetMap.',
   srcFooter: 'Открытые данные. Границы: © EuroGeographics. Независимое расширение, не связанное с этими организациями и операторами.',
   dateAt: '{techno} на {date}',
   datePublished: '{techno} опубликовано {date}',

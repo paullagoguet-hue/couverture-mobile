@@ -111,7 +111,7 @@ const nl: Messages = {
   srcEsMaps: 'Adressen: CartoCiudad (IGN España). Basiskaart: OpenFreeMap, © OpenStreetMap.',
   sourcesPt: 'Bronnen: Portugal',
   srcPtCoverage: 'Dekking: ANACOM, ‘GEO.ANACOM’, geschatte snelheid per klasse; 5G voorlopig{dates}.',
-  srcPtMaps: 'Adressen: Photon (komoot), © OpenStreetMap. Basiskaart: OpenFreeMap, © OpenStreetMap.',
+  srcPtMaps: 'Adressen: Photon, © OpenStreetMap. Basiskaart: OpenFreeMap, © OpenStreetMap.',
   srcFooter: 'Open data. Grenzen: © EuroGeographics. Onafhankelijke extensie, niet verbonden aan deze instanties of aan de providers.',
   dateAt: '{techno} per {date}',
   datePublished: '{techno} gepubliceerd op {date}',

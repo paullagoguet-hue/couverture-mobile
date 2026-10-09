@@ -111,7 +111,7 @@ const ar: Messages = {
   srcEsMaps: 'العناوين: CartoCiudad (IGN España). الخريطة الأساسية: OpenFreeMap، © OpenStreetMap.',
   sourcesPt: 'المصادر: البرتغال',
   srcPtCoverage: 'التغطية: ANACOM، «GEO.ANACOM»، السرعة التقديرية حسب الفئة؛ بيانات 5G مؤقتة{dates}.',
-  srcPtMaps: 'العناوين: Photon (komoot)، © OpenStreetMap. الخريطة الأساسية: OpenFreeMap، © OpenStreetMap.',
+  srcPtMaps: 'العناوين: Photon، © OpenStreetMap. الخريطة الأساسية: OpenFreeMap، © OpenStreetMap.',
   srcFooter: 'بيانات عامة. الحدود: © EuroGeographics. إضافة مستقلة لا ترتبط بهذه الهيئات ولا بالمشغلين.',
   dateAt: '{techno} حتى {date}',
   datePublished: '{techno} نُشرت في {date}',

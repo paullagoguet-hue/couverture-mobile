@@ -107,7 +107,7 @@ export class InfoPage {
         <h3 class="next">${t('sourcesFor', { country: regionName('be') })}</h3>
         <ul class="facts">
           <li>${t('srcCoverage', { source: 'IBPT-BIPT, « Atlas mobile »', dates: '' })}</li>
-          <li>${t('srcAddressesMaps', { geocoder: 'Photon (komoot), © OpenStreetMap', basemap: 'OpenFreeMap, © OpenStreetMap' })}</li>
+          <li>${t('srcAddressesMaps', { geocoder: 'Photon, © OpenStreetMap', basemap: 'OpenFreeMap, © OpenStreetMap' })}</li>
         </ul>
         <p class="hint">${t('srcFooter')}</p>
       </section>

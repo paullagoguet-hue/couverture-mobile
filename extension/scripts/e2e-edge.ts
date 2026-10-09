@@ -58,6 +58,8 @@ const CASES: Case[] = [
     query: `page=${JSON.stringify({ name: 'Apartamento', address: 'Lisboa', lat: 38.7223, lng: -9.1393, precision: 'approximate', radiusM: 1000 })}`,
     expect: { titre: 'Lisboa', note: /1 km/, fromPage: true },
   },
+  { name: 'Belgique : adresse (pays choisi)', query: 'pays=be&q=Rue de la Loi 16 Bruxelles', expect: { titre: 'Rue de la Loi' } },
+  { name: 'Belgique : clic droit, pays reconnu', query: 'q=Meir 50, Antwerpen', expect: { titre: 'Meir 50' } },
   {
     name: 'Belgique : annonce avec coordonnées',
     query: `page=${JSON.stringify({ name: 'Appartement', address: 'Bruxelles', lat: 50.8467, lng: 4.3525, precision: 'approximate', radiusM: 1000 })}`,

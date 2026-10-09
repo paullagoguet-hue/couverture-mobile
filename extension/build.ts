@@ -25,14 +25,16 @@ const pkg = (await import('./package.json', { with: { type: 'json' } })).default
 
 const env = { ...loadEnv('production', root, 'VITE_'), ...process.env };
 const tilesBase = env.VITE_TILES_BASE_URL ?? 'http://127.0.0.1:5173/tiles/';
+/** Notre géocodeur Photon (cf. src/config.ts). */
+const photonUrl = env.VITE_PHOTON_URL ?? 'http://127.0.0.1:2322/api';
 /**
  * Services contactés, en plus de l'hébergement des tuiles :
  *  - data.geopf.fr : géocodage et fond de carte en France (IGN) ;
  *  - www.cartociudad.es : géocodage en Espagne (IGN España) ;
- *  - photon.komoot.io : géocodage au Portugal (OpenStreetMap) ;
+ *  - notre serveur Photon : géocodage au Portugal et en Belgique (OpenStreetMap) ;
  *  - tiles.openfreemap.org : fond de carte hors de France (OpenStreetMap).
  */
-const SERVICE_ORIGINS = ['https://data.geopf.fr', 'https://www.cartociudad.es', 'https://photon.komoot.io', 'https://tiles.openfreemap.org'];
+const SERVICE_ORIGINS = ['https://data.geopf.fr', 'https://www.cartociudad.es', new URL(photonUrl).origin, 'https://tiles.openfreemap.org'];
 
 /**
  * CSP des pages de l'extension. `connect-src` liste les SEULES origines que
@@ -51,8 +53,10 @@ const csp = [
  * d'hôte explicite pour cette adresse. Le build de production (tuiles en ligne)
  * n'a AUCUNE permission d'hôte.
  */
-const isLoopback = ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(tilesBase).hostname);
-const devHostPermissions = isLoopback ? { host_permissions: [`${new URL(tilesBase).origin}/*`] } : {};
+const isLoopbackUrl = (url: string) => ['127.0.0.1', 'localhost', '[::1]'].includes(new URL(url).hostname);
+const localOrigins = [tilesBase, photonUrl].filter(isLoopbackUrl).map((url) => `${new URL(url).origin}/*`);
+const isLoopback = localOrigins.length > 0;
+const devHostPermissions = isLoopback ? { host_permissions: localOrigins } : {};
 
 const icons = Object.fromEntries(ICON_SIZES.map((s) => [s, `icons/icon-${s}.png`]));
 const detectedIcons = Object.fromEntries(ICON_SIZES.map((s) => [s, `icons/icon-${s}-detected.png`]));
@@ -168,5 +172,5 @@ for (const [target, manifest] of Object.entries(manifests)) {
   mkdirSync(outDir, { recursive: true });
   writeFileSync(resolve(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
   writeLocales(outDir);
-  console.log(`dist/${target} : OK (CSP ${csp}${isLoopback ? ' ; build de DEV : permission d\x27hôte ' + new URL(tilesBase).origin : ''})`);
+  console.log(`dist/${target} : OK (CSP ${csp}${isLoopback ? ' ; build de DEV : permissions d\x27hôte ' + localOrigins.join(' ') : ''})`);
 }

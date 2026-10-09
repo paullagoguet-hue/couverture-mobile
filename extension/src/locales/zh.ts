@@ -111,7 +111,7 @@ const zh: Messages = {
   srcEsMaps: '地址：CartoCiudad（IGN España）。底图：OpenFreeMap，© OpenStreetMap。',
   sourcesPt: '来源：葡萄牙',
   srcPtCoverage: '覆盖：ANACOM，“GEO.ANACOM”，按等级估算速度；5G 为临时数据{dates}。',
-  srcPtMaps: '地址：Photon（komoot），© OpenStreetMap。底图：OpenFreeMap，© OpenStreetMap。',
+  srcPtMaps: '地址：Photon，© OpenStreetMap。底图：OpenFreeMap，© OpenStreetMap。',
   srcFooter: '公开数据。边界：© EuroGeographics。独立扩展，与上述机构及运营商无关。',
   dateAt: '{techno}：{date}',
   datePublished: '{techno}：发布于 {date}',

@@ -3,15 +3,23 @@
  *  - France : Géoplateforme de l'IGN (Base Adresse Nationale),
  *    https://data.geopf.fr/geocodage (l'ancienne API api-adresse.data.gouv.fr y redirige) ;
  *  - Espagne : CartoCiudad (IGN espagnol / CNIG), https://www.cartociudad.es/geocoder ;
- *  - Portugal, Belgique : Photon (komoot, données OpenStreetMap), https://photon.komoot.io,
- *    faute de géocodeur public national ouvert et sans clé ; réponses limitées au pays.
+ *  - Portugal, Belgique : Photon (données OpenStreetMap), hébergé par nos soins
+ *    (cf. configureGeocoders) faute de géocodeur public national ouvert et sans
+ *    clé ; réponses limitées au pays. Le serveur public photon.komoot.io ne
+ *    convient pas à une extension (usage limité, blocage en cas de rafale).
  * Tous gratuits, sans clé et ouverts aux appels depuis le navigateur (CORS).
  */
 import type { CountryCode } from './countries.ts';
 
 export const GEOCODER_URL = 'https://data.geopf.fr/geocodage/search';
 export const CARTOCIUDAD_URL = 'https://www.cartociudad.es/geocoder/api/geocoder';
-export const PHOTON_URL = 'https://photon.komoot.io/api/';
+/** Point d'accès Photon (« …/api ») ; à configurer par l'application (cf. configureGeocoders). */
+let photonUrl = 'http://127.0.0.1:2322/api';
+
+/** Adresse de notre serveur Photon (compilation : variable d'environnement de l'application). */
+export function configureGeocoders(options: { photonUrl?: string }) {
+  if (options.photonUrl) photonUrl = options.photonUrl;
+}
 
 export type ResultType = 'housenumber' | 'street' | 'locality' | 'municipality';
 
@@ -204,7 +212,7 @@ const PT_TYPES: Record<string, ResultType> = { house: 'housenumber', street: 'st
 async function geocodePhoton(text: string, country: 'pt' | 'be', { limit = 5, signal, fetchFn = fetch }: GeocodeOptions): Promise<GeocodeResult[]> {
   const q = normalizeQuery(text.replace(/,?\s*(Portugal|Belgique|Belgium|België|Belgie|Belgien)\s*$/i, ''));
   if (!q) return [];
-  const url = new URL(PHOTON_URL);
+  const url = new URL(photonUrl);
   url.searchParams.set('q', q);
   url.searchParams.set('limit', String(limit * 2)); // une partie peut tomber hors du Portugal
   url.searchParams.set('lang', 'default'); // noms locaux

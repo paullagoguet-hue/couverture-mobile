@@ -4,8 +4,9 @@
 *Éditeur : [nom ou raison sociale à compléter] — contact : [adresse e-mail à compléter]*
 
 L'extension « Vérifier la couverture réseau » affiche la couverture mobile
-théorique (données publiques de l'Arcep en France, du ministère espagnol
-du Numérique en Espagne) à une adresse. Elle n'a pas de
+théorique (données publiques des régulateurs et ministères de chaque pays :
+Arcep en France, ministère du Numérique en Espagne, ANACOM au Portugal, IBPT en
+Belgique) à une adresse. Elle n'a pas de
 compte utilisateur, ne dépose pas de cookie, n'utilise aucun outil de mesure
 d'audience ni de pistage publicitaire, et ne vend ni ne partage aucune donnée.
 
@@ -33,8 +34,8 @@ vos identifiants, ni le contenu des autres pages.
 
 | Donnée | Destinataire | Finalité |
 |---|---|---|
-| Texte sélectionné, adresse saisie ou adresse lue sur la page | Service de géocodage du pays recherché : Géoplateforme de l'IGN (`data.geopf.fr`) pour la France, CartoCiudad de l'IGN espagnol (`www.cartociudad.es`) pour l'Espagne | Convertir l'adresse en position sur la carte |
-| Requêtes de fond de carte (zone affichée) | Géoplateforme de l'IGN (`data.geopf.fr`) en France ; OpenFreeMap (`tiles.openfreemap.org`) en Espagne | Afficher la mini-carte |
+| Texte sélectionné, adresse saisie ou adresse lue sur la page | Service de géocodage du pays recherché : Géoplateforme de l'IGN (`data.geopf.fr`) pour la France, CartoCiudad de l'IGN espagnol (`www.cartociudad.es`) pour l'Espagne, notre serveur de géocodage (logiciel Photon, données OpenStreetMap, [domaine à compléter]) pour les autres pays | Convertir l'adresse en position sur la carte |
+| Requêtes de fond de carte (zone affichée) | Géoplateforme de l'IGN (`data.geopf.fr`) en France ; OpenFreeMap (`tiles.openfreemap.org`) dans les autres pays | Afficher la mini-carte |
 | Requêtes de tuiles de couverture (zone autour de l'adresse) | Hébergement des données de couverture : [domaine à compléter] | Lire la couverture à cet endroit |
 | Demande du contenu de l'encart publicitaire éventuel (texte et image), sans l'adresse recherchée | Même hébergement | Afficher l'encart sous le résultat |
 | Aucune donnée : seule l'ouverture du lien de l'encart, **si vous cliquez dessus** | Annonceur | Visite de son site |
@@ -82,6 +83,12 @@ fond de carte de l'IGN, Géoplateforme.
 Espagne : couverture mobile du ministère pour la Transformation numérique, « Mapa de
 servicios de banda ancha » ; géocodage CartoCiudad (IGN España) ; fond de carte
 OpenFreeMap, © contributeurs OpenStreetMap.
+
+Portugal : couverture mobile de l'ANACOM, « GEO.ANACOM » ; géocodage par notre serveur
+(données OpenStreetMap) ; fond de carte OpenFreeMap.
+
+Belgique : couverture mobile de l'IBPT, atlas mobile ; géocodage par notre serveur
+(données OpenStreetMap) ; fond de carte OpenFreeMap.
 
 Frontières (pour reconnaître le pays d'une annonce) : Eurostat GISCO, © EuroGeographics.
 

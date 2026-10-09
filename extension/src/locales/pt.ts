@@ -111,7 +111,7 @@ const pt: Messages = {
   srcEsMaps: 'Moradas: CartoCiudad (IGN España). Mapa de base: OpenFreeMap, © OpenStreetMap.',
   sourcesPt: 'Fontes: Portugal',
   srcPtCoverage: 'Cobertura: ANACOM, «GEO.ANACOM», velocidade estimada por classe; 5G provisório{dates}.',
-  srcPtMaps: 'Moradas: Photon (komoot), © OpenStreetMap. Mapa de base: OpenFreeMap, © OpenStreetMap.',
+  srcPtMaps: 'Moradas: Photon, © OpenStreetMap. Mapa de base: OpenFreeMap, © OpenStreetMap.',
   srcFooter: 'Dados públicos. Fronteiras: © EuroGeographics. Extensão independente, sem ligação a estes organismos nem aos operadores.',
   dateAt: '{techno} em {date}',
   datePublished: '{techno} publicada em {date}',

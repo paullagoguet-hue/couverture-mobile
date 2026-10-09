@@ -7,6 +7,9 @@
 /** Dossier contenant manifest.json et les .pmtiles (en dev : le serveur Vite du site). */
 export const TILES_BASE_URL: string = import.meta.env.VITE_TILES_BASE_URL ?? 'http://127.0.0.1:5173/tiles/';
 
+/** Notre serveur Photon (géocodage hors France et Espagne), en dev : Photon local (cf. geocoder/README.md). */
+export const PHOTON_URL: string = import.meta.env.VITE_PHOTON_URL ?? 'http://127.0.0.1:2322/api';
+
 /** Site de la carte complète, ouvert par le lien « Voir sur la carte complète ». */
 export const SITE_URL: string = import.meta.env.VITE_SITE_URL ?? 'http://127.0.0.1:5173/';
 
