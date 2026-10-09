@@ -10,6 +10,7 @@ import { VectorTile } from '@mapbox/vector-tile';
 import { PbfReader } from 'pbf';
 import { FetchSource, PMTiles, type Source } from 'pmtiles';
 
+import { abortable } from './async.ts';
 import { levelRank, type LevelCode } from './levels.ts';
 import { SOURCE_LAYER, type LayerInfo } from './manifest.ts';
 
@@ -144,7 +145,7 @@ export class CoverageReader {
   /** Niveau en plusieurs points d'une couche ; chaque tuile n'est lue et décodée qu'une fois. */
   private async layerPoints(layer: LayerInfo, points: [number, number][], signal?: AbortSignal) {
     const archive = this.archive(layer);
-    const z = (await archive.getHeader()).maxZoom;
+    const z = (await abortable(archive.getHeader(), signal)).maxZoom;
     const tiles = new Map<string, Promise<TileLayer | null>>();
     return Promise.all(
       points.map(async ([lng, lat]) => {
@@ -152,9 +153,11 @@ export class CoverageReader {
         const key = `${x}/${y}`;
         if (!tiles.has(key)) {
           // Pas de tuile = aucune couverture dans ce carré (tippecanoe n'écrit pas les tuiles vides).
-          tiles.set(key, archive.getZxy(z, x, y, signal).then((t) => (t ? decodeTile(t.data) : null)));
+          // Sans le signal de la recherche : une recherche annulée ne doit pas faire
+          // échouer la tuile pour les suivantes (cf. async.ts).
+          tiles.set(key, archive.getZxy(z, x, y).then((t) => (t ? decodeTile(t.data) : null)));
         }
-        return pointCoverage(await tiles.get(key)!, px, py);
+        return pointCoverage(await abortable(tiles.get(key)!, signal), px, py);
       }),
     );
   }

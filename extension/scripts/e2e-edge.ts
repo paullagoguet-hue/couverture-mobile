@@ -4,21 +4,55 @@
  * profil temporaire, puis le panneau est ouvert sous son adresse
  * chrome-extension:// — donc avec la CSP réelle de l'extension — sur
  * plusieurs cas. Relève les verdicts, la mini-carte et les erreurs (CSP,
- * réseau, exceptions).
+ * réseau, exceptions). Les cas « clics rapprochés » enchaînent deux demandes
+ * presque simultanées : seule la dernière doit s'afficher, sans erreur.
  *
  * Prérequis : extension compilée, serveur de tuiles lancé (npm run dev -w couverture-mobile-web).
  * Usage : npm run test:e2e   (CHROMIUM_PATH pour un autre navigateur)
  */
 import { launch, sleep } from './edge.ts';
 
-const CASES = [
+/** Saisie manuelle dans le panneau, puis Entrée. */
+const type = (text: string) =>
+  `{ const i = document.querySelector('#search input'); i.value = ${JSON.stringify(text)}; document.querySelector('#search').requestSubmit(); }`;
+/** Demande déposée par l'arrière-plan (clic sur l'encadré d'une annonce). */
+const fromCard = (page: object) =>
+  `await chrome.storage.session.set({ pendingQuery: { kind: 'page', ...${JSON.stringify(page)}, at: Date.now() } });`;
+const pause = (ms: number) => `await new Promise((r) => setTimeout(r, ${ms}));`;
+/** Attend que la recherche en cours télécharge la couverture (moment où l'annuler était risqué). */
+const whileReading = `while (!document.querySelector('.loading')?.textContent.includes('Lecture')) ${pause(2)}`;
+const TOURS = { name: 'Gîte', address: 'Tours', lat: 47.4066, lng: 0.6819, precision: 'approximate', radiusM: 1000 };
+
+interface Case {
+  name: string;
+  /** Paramètres de panel.html (q= ou page=) ; absent : panneau ouvert sur l'accueil. */
+  query?: string;
+  /** Actions enchaînées dans le panneau après son ouverture. */
+  actions?: string;
+  /** Résultat attendu : titre affiché, note de zone, bandeau « lu sur la page ». */
+  expect?: { titre?: string; note?: RegExp; fromPage?: boolean };
+}
+
+const CASES: Case[] = [
   { name: 'Adresse exacte (Paris)', query: 'q=10 Rue de Rivoli 75004 Paris' },
-  { name: 'Commune (habitants)', query: 'q=Bonneval-sur-Arc' },
-  {
-    name: 'Annonce approximative (1 km)',
-    query: `page=${JSON.stringify({ name: 'Test', address: 'Tours', lat: 47.4066, lng: 0.6819, precision: 'approximate', radiusM: 1000 })}`,
-  },
+  { name: 'Commune (habitants)', query: 'q=Bonneval-sur-Arc', expect: { note: /habitants/ } },
+  { name: 'Annonce approximative (1 km)', query: `page=${JSON.stringify(TOURS)}`, expect: { note: /1 km/, fromPage: true } },
   { name: 'Adresse introuvable', query: 'q=xqzwv kkjjhh' },
+  {
+    name: 'Clics rapprochés : saisie puis encadré',
+    actions: type('15 Boulevard de la Liberté 59800 Lille') + whileReading + fromCard(TOURS),
+    expect: { titre: 'Tours', note: /1 km/, fromPage: true },
+  },
+  {
+    name: 'Clics rapprochés : encadré puis saisie',
+    actions: fromCard(TOURS) + pause(150) + type('Place Bellecour 69002 Lyon'),
+    expect: { titre: 'Bellecour', fromPage: false },
+  },
+  {
+    name: 'Clics rapprochés : deux communes du même département',
+    actions: type('Bonneval-sur-Arc') + whileReading + type('Bessans'),
+    expect: { titre: 'Bessans', note: /habitants/ },
+  },
 ];
 
 const browser = await launch();
@@ -26,23 +60,41 @@ console.log(`Extension chargée : ${browser.extensionId}\n`);
 let failures = 0;
 try {
   for (const c of CASES) {
-    const page = await browser.open(`panel.html?${c.query.replace(/ /g, '%20')}`);
+    const page = await browser.open(c.query ? `panel.html?${c.query.replace(/ /g, '%20')}` : 'panel.html');
+    if (c.actions) {
+      await sleep(1500);
+      await page.evaluate(`(async () => { ${c.actions} })()`);
+    }
     await sleep(7000);
-    const r = await page.evaluate<{ titre: string; verdicts: string[]; carte: boolean; note: string | null; encart: string | null }>(`({
+    const r = await page.evaluate<{
+      titre: string;
+      verdicts: string[];
+      carte: boolean;
+      note: string | null;
+      fromPage: boolean;
+      encart: string | null;
+    }>(`({
       titre: document.querySelector('h2')?.innerText ?? document.querySelector('#result')?.innerText.slice(0, 80),
-      verdicts: [...document.querySelectorAll('.coverage tbody tr')].map((tr) => tr.innerText.replace(/\\s+/g, ' ').trim()),
+      verdicts: [...document.querySelectorAll('.operators li')].map((li) => li.innerText.replace(/\\s+/g, ' ').trim()),
       carte: !!document.querySelector('#minimap canvas'),
       note: document.querySelector('.area-note')?.innerText ?? null,
+      fromPage: !!document.querySelector('.from-page'),
       encart: document.querySelector('.encart')?.innerText.replace(/\\s+/g, ' ') ?? null,
     })`);
-    const ok = !page.problems.length && (!r.verdicts.length || r.carte);
+    const x = c.expect;
+    const mismatch = [
+      x?.titre && !r.titre?.includes(x.titre) && `titre attendu : « ${x.titre} »`,
+      x?.note && !x.note.test(r.note ?? '') && `note attendue : ${x.note}`,
+      x?.fromPage !== undefined && x.fromPage !== r.fromPage && `bandeau « lu sur la page » ${x.fromPage ? 'absent' : 'en trop'}`,
+    ].filter((m): m is string => !!m);
+    const ok = !page.problems.length && !mismatch.length && (!r.verdicts.length || r.carte);
     if (!ok) failures++;
     console.log(`${ok ? '✓' : '✗'} ${c.name} — ${r.titre}`);
     for (const v of r.verdicts) console.log(`    ${v}`);
     if (r.note) console.log(`    note : ${r.note}`);
     if (r.encart) console.log(`    encart : ${r.encart}`);
     if (r.verdicts.length) console.log(`    mini-carte : ${r.carte ? 'affichée' : 'ABSENTE'}`);
-    for (const p of page.problems) console.log(`    ⚠ ${p}`);
+    for (const p of [...mismatch, ...page.problems]) console.log(`    ⚠ ${p}`);
     await page.close();
   }
 } finally {

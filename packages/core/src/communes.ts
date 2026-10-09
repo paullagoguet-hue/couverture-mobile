@@ -3,6 +3,7 @@
  * sa surface s'il n'y en a pas de recensés), par niveau et par couche, précalculée par le pipeline (commune_stats.py,
  * merge_communes.py) et publiée en un JSON par département à côté des tuiles.
  */
+import { abortable, SHARED_FETCH_TIMEOUT_MS } from './async.ts';
 import type { AreaStats, LayerCoverage } from './coverage.ts';
 import { LEVELS } from './levels.ts';
 import type { LayerInfo } from './manifest.ts';
@@ -35,7 +36,8 @@ export async function loadCommuneCoverage(tilesBaseUrl: string, citycode: string
     const url = new URL(`communes/${dept}.json`, tilesBaseUrl);
     cache.set(
       dept,
-      fetch(url, { signal })
+      // Téléchargement partagé : indépendant du signal de la recherche (cf. async.ts).
+      fetch(url, { signal: AbortSignal.timeout(SHARED_FETCH_TIMEOUT_MS) })
         .then((r) => (r.ok ? (r.json() as Promise<DepartmentFile>) : null))
         .catch(() => {
           cache.delete(dept); // erreur réseau : on retentera
@@ -43,7 +45,7 @@ export async function loadCommuneCoverage(tilesBaseUrl: string, citycode: string
         }),
     );
   }
-  const file = await cache.get(dept)!;
+  const file = await abortable(cache.get(dept)!, signal);
   const entry = file?.communes[citycode];
   if (!entry) return null;
   const { nom, hab, base, ...rest } = entry;

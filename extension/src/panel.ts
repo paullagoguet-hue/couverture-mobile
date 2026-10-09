@@ -3,10 +3,16 @@
  *
  * Reçoit le texte sélectionné via storage.session (déposé par background.ts),
  * le géocode, lit la couverture des couches au point trouvé, puis affiche un
- * tableau opérateurs × technos, le meilleur opérateur et une mini-carte.
+ * verdict par opérateur, le meilleur opérateur et une mini-carte.
  * Hors extension (tests), la requête peut être passée en paramètre : panel.html?q=…
+ *
+ * Robustesse : chaque recherche a son propre AbortController ; une nouvelle
+ * recherche (saisie, clic droit, page d'annonce…) annule la précédente, dont
+ * le résultat n'est alors jamais affiché. Les ressources partagées (manifeste,
+ * tuiles, communes) ne dépendent pas de l'annulation d'une recherche.
  */
 import {
+  abortable,
   bestOperators,
   cleanAddress,
   communeToCoverage,
@@ -16,6 +22,7 @@ import {
   loadCommuneCoverage,
   loadManifest,
   operatorStatus,
+  SHARED_FETCH_TIMEOUT_MS,
   STATUS_COLORS,
   summarizeByOperator,
   type StatusKind,
@@ -28,6 +35,7 @@ import { api, PENDING_KEY, type PendingQuery } from './browser.ts';
 import { CARD_ENABLED_KEY } from './messages.ts';
 import { DISCLAIMER, SITE_URL, TILES_BASE_URL } from './config.ts';
 import { fillEncart } from './encart.ts';
+import { HERO_SVG, ICONS } from './illustrations.ts';
 import { MiniMap } from './minimap.ts';
 import { SearchBox } from './search.ts';
 
@@ -45,82 +53,183 @@ const escapeHtml = (s: string) =>
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
-/** Bandeau affiché au-dessus du résultat (ex. « Adresse lue sur la page : … »), HTML déjà échappé. */
-let sourceNote = '';
-
-/** Emplacement approximatif : couverture évaluée dans ce rayon (m) plutôt qu'en un point. */
-let areaRadius: number | undefined;
 /** Rayon par défaut si la page ne précise pas le sien (cf. radiusFor dans lodging.ts). */
 const APPROX_RADIUS_M = 1000;
 
 /** « 300 m », « 1 km », « 2 km ». */
 const formatDistance = (m: number) => (m >= 1000 ? `${(m / 1000).toLocaleString('fr-FR')} km` : `${m} m`);
 
-function show(html: string) {
-  out.innerHTML = (sourceNote ? `<p class="from-page">${sourceNote}</p>` : '') + html;
+/** Contexte d'une recherche : propre à elle, jamais partagé avec la suivante. */
+interface Run {
+  signal: AbortSignal;
+  /** Bandeau au-dessus du résultat (ex. « Adresse lue sur la page : … »), HTML déjà échappé. */
+  note: string;
+  /** Emplacement approximatif : couverture évaluée dans ce rayon (m) plutôt qu'en un point. */
+  radiusM?: number;
+}
+
+/** Démarre une recherche : annule la précédente, dont le résultat sera ignoré. */
+function startRun(note = '', radiusM?: number): Run {
+  currentRun?.abort();
+  currentRun = new AbortController();
+  return { signal: currentRun.signal, note, radiusM };
+}
+
+/** Remplace le contenu (avec un léger fondu) ; `note` éventuelle en tête. */
+function show(html: string, note = '') {
+  out.innerHTML = (note ? `<p class="from-page">${note}</p>` : '') + html;
+  // Relance l'animation d'apparition.
+  out.style.animation = 'none';
+  void out.offsetWidth;
+  out.style.animation = '';
+}
+
+function loading(text: string, note = '') {
+  show(
+    `<div class="loading"><span class="spinner"></span><span>${text}</span></div>
+     <div class="card skeleton"><i></i><i></i><i></i><i></i></div>`,
+    note,
+  );
+}
+
+/** Message (conseil ou erreur) avec pictogramme ; renvoie le conteneur pour y brancher des boutons. */
+function message(o: { icon: string; title: string; body: string; error?: boolean; action?: string }, note = '') {
+  show(
+    `<div class="card message${o.error ? ' error' : ''}">
+       <span class="bubble">${o.icon}</span>
+       <div><strong>${o.title}</strong>${o.body}${o.action ? `<p>${o.action}</p>` : ''}</div>
+     </div>`,
+    note,
+  );
+}
+
+const EXAMPLES = ['10 Rue de Rivoli, Paris', 'Bonneval-sur-Arc', 'Belle-Île-en-Mer'];
+
+/** Accueil : explication, trois façons de vérifier, exemples. */
+function showWelcome() {
+  currentRun?.abort();
+  show(`<section class="welcome">
+    ${HERO_SVG}
+    <h2>Votre téléphone captera-t-il ?</h2>
+    <p class="lead">Avant de réserver un logement, de louer ou d'acheter, vérifiez la couverture 4G et 5G
+      des quatre opérateurs à l'adresse, d'après les cartes publiques de l'Arcep.</p>
+    <div class="card">
+      <h3>Trois façons de vérifier</h3>
+      <ul class="steps">
+        <li><span class="bubble">${ICONS.search}</span><div><strong>Tapez une adresse</strong>
+          <span>ou un nom de commune, dans le champ ci-dessus.</span></div></li>
+        <li><span class="bubble">${ICONS.select}</span><div><strong>Sélectionnez une adresse sur une page</strong>
+          <span>puis clic droit, « Vérifier la couverture réseau ».</span></div></li>
+        <li><span class="bubble">${ICONS.house}</span><div><strong>Sur une annonce de logement</strong>
+          <span>l'icône de l'extension devient orange : cliquez dessus, l'adresse de l'annonce est lue pour vous.</span></div></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Le verdict, pour chaque opérateur</h3>
+      ${legendHtml()}
+    </div>
+    <div class="card">
+      <h3>Essayer</h3>
+      <div class="examples">${EXAMPLES.map((e) => `<button type="button">${escapeHtml(e)}</button>`).join('')}</div>
+    </div>
+  </section>`);
+  out.querySelectorAll<HTMLButtonElement>('.examples button').forEach((b) =>
+    b.addEventListener('click', () => void run(b.textContent!)),
+  );
 }
 
 /** Point d'entrée : un texte sélectionné, saisi ou lu sur la page. */
 async function run(text: string, note = '', radiusM?: number) {
-  sourceNote = note;
-  areaRadius = radiusM;
   search.setText(text);
-  currentRun?.abort();
-  const run = (currentRun = new AbortController());
-  show(`<p class="status">Recherche de « ${escapeHtml(text)} »…</p>`);
+  const r = startRun(note, radiusM);
+  loading(`Recherche de « ${escapeHtml(text)} »…`, r.note);
   try {
-    const results = await geocode(text, { limit: 5, signal: run.signal });
+    const results = await geocode(text, { limit: 5, signal: r.signal });
+    if (r.signal.aborted) return;
     if (!results.length) {
-      show(`<p><strong>Adresse introuvable</strong> pour « ${escapeHtml(text)} ».</p>
-            <p>Essayez de sélectionner une adresse complète ou un nom de commune.</p>`);
+      message(
+        {
+          icon: ICONS.pin,
+          title: 'Adresse introuvable',
+          body: `<p>Aucun lieu ne correspond à « ${escapeHtml(text)} ».</p>
+                 <p>Essayez une adresse complète (numéro, rue, ville) ou un nom de commune.</p>`,
+        },
+        r.note,
+      );
       return;
     }
-    if (isUnambiguous(results)) return await showCoverage(results[0], run.signal);
+    if (isUnambiguous(results)) return await showCoverage(results[0], r);
     // Plusieurs lieux plausibles : l'utilisateur choisit.
-    show(`<p>Plusieurs lieux correspondent à « ${escapeHtml(text)} » :</p>
-          <ul class="choices">${results
-            .map((r, i) => `<li><button data-i="${i}">${escapeHtml(r.label)}<small>${escapeHtml(r.context)}</small></button></li>`)
-            .join('')}</ul>`);
+    show(
+      `<div class="card"><strong>Plusieurs lieux correspondent à « ${escapeHtml(text)} »</strong>
+        <ul class="choices">${results
+          .map((p, i) => `<li><button type="button" data-i="${i}">${ICONS.pin}<span>${escapeHtml(p.label)}<small>${escapeHtml(p.context)}</small></span></button></li>`)
+          .join('')}</ul></div>`,
+      r.note,
+    );
     out.querySelectorAll<HTMLButtonElement>('.choices button').forEach((b) =>
-      b.addEventListener('click', () => showCoverage(results[Number(b.dataset.i)], run.signal)),
+      b.addEventListener('click', () => {
+        // Nouvelle recherche (même note et rayon) : un double clic n'en lance qu'une à la fois.
+        const pick = startRun(r.note, r.radiusM);
+        void showCoverage(results[Number(b.dataset.i)], pick);
+      }),
     );
   } catch (err) {
-    if (run.signal.aborted) return;
+    if (r.signal.aborted) return;
     console.error(err);
-    show(`<p class="error"><strong>La recherche d'adresse a échoué.</strong><br />
-      Le service de géocodage de l'IGN (data.geopf.fr) est injoignable.</p>
-      <p class="source">Détail : ${escapeHtml((err as Error).message)}</p>`);
+    message(
+      {
+        icon: ICONS.alert,
+        error: true,
+        title: "La recherche d'adresse a échoué",
+        body: `<p>Le service de géocodage de l'IGN (data.geopf.fr) ne répond pas. Vérifiez votre connexion.</p>
+               <p class="detail">Détail : ${escapeHtml((err as Error).message)}</p>`,
+        action: `<button class="btn" id="retry" type="button">${ICONS.retry}Réessayer</button>`,
+      },
+      r.note,
+    );
+    out.querySelector('#retry')!.addEventListener('click', () => void run(text, note, radiusM));
   }
 }
 
 /** Lit et affiche la couverture ; affiche une erreur claire plutôt que de rester bloqué. */
-async function showCoverage(place: GeocodeResult, runSignal: AbortSignal) {
-  show(`<p class="status">Lecture de la couverture à ${escapeHtml(place.label)}…</p>`);
-  const signal = AbortSignal.any([runSignal, AbortSignal.timeout(COVERAGE_TIMEOUT_MS)]);
+async function showCoverage(place: GeocodeResult, r: Run) {
+  if (r.signal.aborted) return;
+  loading(`Lecture de la couverture à ${escapeHtml(place.label)}…`, r.note);
+  const signal = AbortSignal.any([r.signal, AbortSignal.timeout(COVERAGE_TIMEOUT_MS)]);
   try {
-    manifestPromise ??= loadManifest(TILES_BASE_URL, fetch, signal);
-    const manifest = await manifestPromise;
-    // Commune sans adresse précise : parts de surface précalculées sur tout son
+    // Manifeste partagé entre recherches : téléchargé sans le signal de celle-ci.
+    manifestPromise ??= loadManifest(TILES_BASE_URL, fetch, AbortSignal.timeout(SHARED_FETCH_TIMEOUT_MS));
+    const manifest = await abortable(manifestPromise, signal);
+    // Commune sans adresse précise : parts d'habitants précalculées sur tout son
     // territoire si elles sont publiées, sinon couverture au point central.
     const commune = place.type === 'municipality' && place.citycode
       ? await loadCommuneCoverage(TILES_BASE_URL, place.citycode, signal)
       : null;
     const coverage = commune
       ? communeToCoverage(manifest.layers, commune)
-      : await reader.query(manifest.layers, place.lng, place.lat, signal, areaRadius);
-    renderCoverage(place, manifest, coverage);
+      : await reader.query(manifest.layers, place.lng, place.lat, signal, r.radiusM);
+    if (r.signal.aborted) return; // une recherche plus récente a pris la main
+    renderCoverage(place, manifest, coverage, r);
   } catch (err) {
-    // Ne pas garder en cache un échec (même interrompu) : le prochain essai repart de zéro.
+    if (r.signal.aborted) return; // remplacée par une recherche plus récente : rien à signaler
+    // Vrai échec (réseau, délai) : ne pas garder les caches, le prochain essai repart de zéro.
     manifestPromise = undefined;
     reader = new CoverageReader(TILES_BASE_URL);
-    if (runSignal.aborted) return; // remplacé par une recherche plus récente
     console.error(err);
     const timedOut = signal.aborted;
-    show(`<p class="error"><strong>Impossible de lire la couverture.</strong><br />
-      ${timedOut ? `Le serveur des cartes ne répond pas (délai de ${COVERAGE_TIMEOUT_MS / 1000} s dépassé).` : `Le serveur des cartes est injoignable.`}</p>
-      <p class="source">Serveur : ${escapeHtml(new URL(TILES_BASE_URL).origin)}<br />Détail : ${escapeHtml((err as Error).message)}</p>
-      <p><button id="retry">Réessayer</button></p>`);
-    out.querySelector('#retry')!.addEventListener('click', () => showCoverage(place, runSignal));
+    message(
+      {
+        icon: ICONS.noSignal,
+        error: true,
+        title: 'Impossible de lire la couverture',
+        body: `<p>${timedOut ? `Le serveur des cartes ne répond pas (délai de ${COVERAGE_TIMEOUT_MS / 1000} s dépassé).` : 'Le serveur des cartes est injoignable.'}</p>
+               <p class="detail">Serveur : ${escapeHtml(new URL(TILES_BASE_URL).origin)} · ${escapeHtml((err as Error).message)}</p>`,
+        action: `<button class="btn" id="retry" type="button">${ICONS.retry}Réessayer</button>`,
+      },
+      r.note,
+    );
+    out.querySelector('#retry')!.addEventListener('click', () => void showCoverage(place, startRun(r.note, r.radiusM)));
   }
 }
 
@@ -132,7 +241,12 @@ const STATUS_LEGEND: [StatusKind, string][] = [
   ['none', '4G faible ou pas de réseau'],
 ];
 
-function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: LayerCoverage[]) {
+const legendHtml = () =>
+  `<ul class="status-legend">${STATUS_LEGEND.map(
+    ([k, text]) => `<li><span class="chip" style="background:${STATUS_COLORS[k].color}"></span>${text}</li>`,
+  ).join('')}</ul>`;
+
+function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: LayerCoverage[], r: Run) {
   const summaries = summarizeByOperator(coverage);
   const statuses = new Map(summaries.map((s) => [s.operator, operatorStatus(s)]));
   const best = bestOperators(summaries);
@@ -146,11 +260,10 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
     .map((s) => {
       const st = statuses.get(s.operator)!;
       const isBest = bestIds.has(s.operator);
-      return `<tr${isBest ? ' class="best"' : ''}>
-          <th scope="row">${escapeHtml(s.operatorLabel)}${isBest ? '<span class="badge">★ meilleur</span>' : ''}</th>
-          <td><button class="cell status" data-layer="${st.layerId ?? ''}" title="${escapeHtml(st.detail)}"
-              style="background:${st.color};color:${st.textColor}"${st.layerId ? '' : ' disabled'}>${escapeHtml(st.label)}</button></td>
-        </tr>`;
+      return `<li><button type="button" class="cell${isBest ? ' best' : ''}" data-layer="${st.layerId ?? ''}" title="${escapeHtml(st.detail)}"${st.layerId ? '' : ' disabled'}>
+          <span class="op-name">${escapeHtml(s.operatorLabel)}${isBest ? `<span class="badge">${ICONS.star}meilleur ici</span>` : ''}</span>
+          <span class="pill" style="background:${st.color};color:${st.textColor}">${escapeHtml(st.label)}</span>
+        </button></li>`;
     })
     .join('');
 
@@ -159,8 +272,8 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
     : allTied
       ? `Les ${summaries.length} opérateurs offrent la même couverture ici.`
       : best.length === 1
-        ? `Meilleure couverture ici : <strong>${escapeHtml(best[0].operatorLabel)}</strong>`
-        : `Meilleure couverture ici (ex æquo) : <strong>${best.map((b) => escapeHtml(b.operatorLabel)).join(', ')}</strong>`;
+        ? `Meilleure couverture : <strong>${escapeHtml(best[0].operatorLabel)}</strong>`
+        : `Meilleure couverture (ex æquo) : <strong>${best.map((b) => escapeHtml(b.operatorLabel)).join(', ')}</strong>`;
 
   // Dates des données par techno (la 5G et la 4G ne sont pas publiées au même trimestre).
   const technos = [...new Set(manifest.layers.map((l) => l.techno))].sort();
@@ -168,33 +281,44 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
     .map((t) => `${t.toUpperCase()} au ${formatDate(manifest.layers.find((l) => l.techno === t)!.date)}`)
     .join(', ');
 
-  show(`
-    <h2>${escapeHtml(place.label)}</h2>
-    ${place.type === 'municipality' && !sourceNote && zone !== 'commune' // le bandeau de la page le dit déjà
-      ? '<p class="warning">Commune sans adresse précise : couverture au point central de la commune, elle peut varier ailleurs sur son territoire.</p>'
-      : ''}
-    ${zone === 'commune'
-      ? coverage[0].area!.basis === 'surface'
-        ? '<p class="area-note">Taux de 5G calculé sur tout le territoire de la commune (carte Arcep à 50 m).</p>'
-        : `<p class="area-note">Taux de 5G calculé sur les ${(coverage[0].area!.inhabitants ?? 0).toLocaleString('fr-FR')} habitants de la commune (Insee 2019), là où ils vivent : les zones inhabitées ne comptent pas.</p>`
+  const area = coverage[0]?.area;
+  const areaNote =
+    zone === 'commune'
+      ? area!.basis === 'surface'
+        ? 'Taux de 5G calculé sur tout le territoire de la commune (carte Arcep à 50 m).'
+        : `Taux de 5G calculé sur les ${(area!.inhabitants ?? 0).toLocaleString('fr-FR')} habitants de la commune (Insee 2019), là où ils vivent : les zones inhabitées ne comptent pas.`
       : zone === 'circle'
-        ? `<p class="area-note">Taux de 5G évalué dans un rayon de ${formatDistance(coverage[0].area!.radiusM ?? APPROX_RADIUS_M)} autour de l'emplacement indiqué.</p>`
+        ? `Taux de 5G évalué dans un rayon de ${formatDistance(area!.radiusM ?? APPROX_RADIUS_M)} autour de l'emplacement indiqué.`
+        : '';
+
+  show(
+    `<section class="card">
+      <div class="place-head">${ICONS.pin}<h2>${escapeHtml(place.label)}</h2></div>
+      ${areaNote ? `<p class="area-note">${areaNote}</p>` : ''}
+      ${place.type === 'municipality' && !r.note && zone !== 'commune' // le bandeau de la page le dit déjà
+        ? '<p class="warning">Commune sans adresse précise : couverture au point central de la commune, elle peut varier ailleurs sur son territoire.</p>'
         : ''}
-    <p class="best-text">${bestText}</p>
-    <table class="coverage">
-      <colgroup><col class="op" /><col /></colgroup>
-      <tbody>${rows}</tbody>
-    </table>
-    <ul class="status-legend">${STATUS_LEGEND.map(
-      ([k, text]) => `<li><span class="chip" style="background:${STATUS_COLORS[k].color}"></span>${text}</li>`,
-    ).join('')}</ul>
-    <p class="map-caption">Carte : <strong id="map-layer"></strong> <small>— cliquez un opérateur pour changer</small></p>
-    <div id="minimap-slot"></div>
-    <p class="note">Un verdict « 5G » ne garantit pas le très haut débit : l'Arcep ne distingue pas la bande 700 MHz
-      (longue portée, débit proche de la 4G) de la bande 3,5 GHz (rapide, faible portée). Le détail par niveau s'affiche au survol.</p>
+    </section>
+    <section class="card">
+      <p class="best-text">${best.length && !allTied ? ICONS.star : ''}<span>${bestText}</span></p>
+      <ul class="operators">${rows}</ul>
+      ${legendHtml()}
+    </section>
+    <section class="card">
+      <p class="map-caption">Carte : <strong id="map-layer"></strong> <small>— touchez un opérateur pour changer</small></p>
+      <div id="minimap-slot"></div>
+      <p class="map-actions"><a id="full-map" class="btn" target="_blank" rel="noopener">Voir sur la carte complète ${ICONS.arrow}</a></p>
+    </section>
     <p class="source">${DISCLAIMER} (données ${dates}).</p>
-    <p><a id="full-map" target="_blank" rel="noopener">Voir sur la carte complète</a></p>
-    <div id="encart-slot"></div>`);
+    <details class="more"><summary>Bon à savoir</summary>
+      <p>Un verdict « 5G » ne garantit pas le très haut débit : l'Arcep ne distingue pas la bande 700 MHz
+      (longue portée, débit proche de la 4G) de la bande 3,5 GHz (rapide, faible portée).</p>
+      <p>Couverture théorique, en extérieur : à l'intérieur d'un bâtiment, le signal peut être plus faible.
+      Le détail par niveau s'affiche au survol d'un opérateur.</p>
+    </details>
+    <div id="encart-slot"></div>`,
+    r.note,
+  );
 
   const miniMap = attachMiniMap(document.getElementById('minimap-slot')!);
   // Publicité éventuelle : sous le résultat, jamais avant, sans effet sur le classement.
@@ -211,7 +335,7 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
     url.searchParams.set('techno', layer.techno);
     url.hash = `15/${place.lat.toFixed(5)}/${place.lng.toFixed(5)}`;
     (document.getElementById('full-map') as HTMLAnchorElement).href = url.href;
-    void miniMap.show(layer, place.lng, place.lat, zone === 'commune' ? 11 : 13);
+    miniMap?.show(layer, place.lng, place.lat, zone === 'commune' ? 11 : 13).catch(console.error);
   };
   out.querySelectorAll<HTMLButtonElement>('.cell').forEach((b) => b.addEventListener('click', () => select(b.dataset.layer!)));
 
@@ -223,14 +347,28 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
 
 /**
  * La mini-carte est créée une seule fois (MapLibre coûte cher à initialiser) ;
- * son conteneur est déplacé dans chaque nouveau résultat.
+ * son conteneur est déplacé dans chaque nouveau résultat. Si elle ne peut pas
+ * être créée (WebGL indisponible…), le résultat s'affiche sans elle.
  */
 let miniMap: MiniMap | undefined;
+let miniMapFailed = false;
 const mapContainer = Object.assign(document.createElement('div'), { id: 'minimap' });
-function attachMiniMap(slot: HTMLElement): MiniMap {
+function attachMiniMap(slot: HTMLElement): MiniMap | undefined {
+  if (miniMapFailed) {
+    slot.closest('section')?.querySelector('.map-caption')?.remove();
+    slot.remove();
+    return undefined;
+  }
   slot.replaceWith(mapContainer);
-  miniMap ??= new MiniMap(mapContainer);
-  miniMap.resize();
+  try {
+    miniMap ??= new MiniMap(mapContainer);
+    miniMap.resize();
+  } catch (err) {
+    console.error('Mini-carte indisponible :', err);
+    miniMapFailed = true;
+    mapContainer.closest('section')?.querySelector('.map-caption')?.remove();
+    mapContainer.remove();
+  }
   return miniMap;
 }
 
@@ -239,29 +377,36 @@ function attachMiniMap(slot: HTMLElement): MiniMap {
 // Saisie manuelle (étape 5) : Entrée, ou choix d'une suggestion.
 const search = new SearchBox(document.getElementById('search') as HTMLFormElement, {
   onSubmit: (text) => void run(text),
-  onPick: (place) => {
-    sourceNote = '';
-    areaRadius = undefined;
-    currentRun?.abort();
-    const ctrl = (currentRun = new AbortController());
-    void showCoverage(place, ctrl.signal);
-  },
+  onPick: (place) => void showCoverage(place, startRun()),
 });
+
+/** Horodatage de la dernière requête traitée : chaque requête n'est traitée qu'une fois. */
+let lastPendingAt = 0;
 
 /** Traite une requête déposée par l'arrière-plan (clic droit, icône, page d'hébergement). */
 function handlePending(p: PendingQuery) {
+  // Au chargement, la même requête peut arriver deux fois (lecture initiale + événement).
+  if (p.at <= lastPendingAt) return;
+  lastPendingAt = p.at;
   if (p.kind === 'selection') {
     void run(p.text);
   } else if (p.kind === 'not-lodging-page') {
-    sourceNote = '';
-    show(`<p><strong>Ouvrez la page de l'hébergement.</strong></p>
-          <p>Cette page (par exemple une liste de résultats) ne correspond pas à un établissement précis.
-          Cliquez sur le nom de l'hébergement : sa page s'ouvre, souvent dans un nouvel onglet, et l'icône
-          de l'extension devient orange. Cliquez alors de nouveau sur l'icône.</p>`);
+    currentRun?.abort();
+    message({
+      icon: ICONS.house,
+      title: "Ouvrez la page de l'hébergement",
+      body: `<p>Cette page (par exemple une liste de résultats) ne correspond pas à un logement précis.</p>
+             <p>Cliquez sur le logement qui vous intéresse : sa page s'ouvre, souvent dans un nouvel onglet, et l'icône
+             de l'extension devient orange. Cliquez alors de nouveau sur l'icône.</p>`,
+    });
   } else if (p.kind === 'page-error') {
-    sourceNote = '';
-    show(`<p><strong>Aucune adresse lisible sur cette page.</strong></p>
-          <p>Sélectionnez l'adresse affichée sur la page puis faites un clic droit, ou tapez-la ci-dessus.</p>`);
+    currentRun?.abort();
+    message({
+      icon: ICONS.select,
+      title: 'Aucune adresse lisible sur cette page',
+      body: `<p>Sélectionnez l'adresse affichée sur la page puis faites un clic droit, « Vérifier la couverture réseau »,
+             ou tapez-la ci-dessus.</p>`,
+    });
     search.focus();
   } else {
     // Adresse lue sur la page : on l'affiche pour que l'utilisateur puisse la vérifier.
@@ -278,13 +423,12 @@ function handlePending(p: PendingQuery) {
     const note = `${p.precision === 'exact' ? 'Adresse' : 'Localisation'} lue sur la page : ${what}${precisionNote}`;
     if (p.lat !== undefined && p.lng !== undefined) {
       // Coordonnées publiées par la page : pas besoin de géocoder.
-      sourceNote = note;
-      areaRadius = radius;
       search.setText(p.address ?? p.name ?? '');
-      currentRun?.abort();
-      const ctrl = (currentRun = new AbortController());
       const label = p.address ?? p.name ?? `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
-      void showCoverage({ label, type: 'housenumber', score: 1, lng: p.lng, lat: p.lat, citycode: '', city: '', context: '' }, ctrl.signal);
+      void showCoverage(
+        { label, type: 'housenumber', score: 1, lng: p.lng, lat: p.lat, citycode: '', city: '', context: '' },
+        startRun(note, radius),
+      );
     } else {
       void run(cleanAddress(p.address!), note, radius);
     }
@@ -303,18 +447,26 @@ if (testQuery) {
 } else if (testPage) {
   handlePending({ kind: 'page', ...JSON.parse(testPage), at: Date.now() });
 } else if (api) {
-  // Requête déposée juste avant l'ouverture du panneau ;
-  // sinon (ouverture par l'icône), on donne la main au champ de saisie.
-  api.storage.session.get(PENDING_KEY).then((items) => {
-    const p = items[PENDING_KEY] as PendingQuery | undefined;
-    if (p && Date.now() - p.at < PENDING_MAX_AGE_MS) handlePending(p);
-    else search.focus();
-  });
-  // … ou pendant qu'il est ouvert.
+  // … ou pendant qu'il est ouvert (écouteur posé d'abord : rien ne se perd).
   api.storage.session.onChanged.addListener((changes) => {
     const p = changes[PENDING_KEY]?.newValue as PendingQuery | undefined;
     if (p) handlePending(p);
   });
+  // Requête déposée juste avant l'ouverture du panneau ; sinon (ouverture par
+  // l'icône), accueil et main au champ de saisie.
+  api.storage.session.get(PENDING_KEY).then(
+    (items) => {
+      const p = items[PENDING_KEY] as PendingQuery | undefined;
+      if (p && Date.now() - p.at < PENDING_MAX_AGE_MS) handlePending(p);
+      else if (!currentRun && !lastPendingAt) {
+        showWelcome();
+        search.focus();
+      }
+    },
+    () => showWelcome(),
+  );
+} else {
+  showWelcome();
 }
 
 // Version affichée en bas du panneau : permet de vérifier que la bonne version est chargée.

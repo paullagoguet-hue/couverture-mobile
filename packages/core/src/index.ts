@@ -5,3 +5,4 @@ export * from './geocode.ts';
 export * from './ranking.ts';
 export * from './communes.ts';
 export * from './status.ts';
+export * from './async.ts';

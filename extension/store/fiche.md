@@ -47,11 +47,17 @@ figurent que dans les justifications de permissions, lues par les relecteurs.
 **Politique de confidentialité** : `https://github.com/paullagoguet-hue/couverture-mobile/blob/main/PRIVACY.md`
 **Site** : [à compléter : URL de la carte en ligne].
 
-**Captures** (1280 × 800) : voir `store/captures/` (générées par `npm run captures`).
+**Captures** (1280 × 800, 5 au maximum) : voir `store/captures/` (générées par `npm run captures`).
+0. Accueil : trois façons de vérifier.
 1. Résultat sur une adresse précise : 4 verdicts 5G et mini-carte.
 2. Commune de montagne : verdicts variés, calcul sur les habitants.
 3. Annonce à emplacement approximatif : rayon de 1 km.
 4. Saisie d'une adresse avec suggestions.
+
+**Visuels promotionnels** (`store/promo/`, générés par la même commande) :
+- `promo-440x280.png` : petite vignette (Chrome « Small promo tile », Edge « Small promotional tile »).
+- `promo-1400x560.png` : bannière (Chrome « Marquee promo tile », Edge « Large promotional tile »).
+- AMO n'utilise pas de visuel promotionnel : seulement l'icône et les captures.
 
 ---
 

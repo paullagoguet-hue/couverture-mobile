@@ -51,6 +51,10 @@ export class MiniMap {
     });
     this.map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
     this.map.addControl(new AttributionControl({ compact: true, customAttribution: ARCEP_ATTRIBUTION }), 'bottom-right');
+    // Tuile du fond ou de couverture indisponible (réseau, requête annulée en
+    // changeant d'opérateur…) : la carte continue avec le reste, rien à signaler
+    // à l'utilisateur. Sans ce gestionnaire, MapLibre écrit l'événement brut en erreur.
+    this.map.on('error', (e) => console.debug('Mini-carte :', e.error?.message ?? e));
     this.marker = new Marker({ color: '#b3261e' });
     this.ready = this.map.once('load');
   }

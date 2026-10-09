@@ -36,7 +36,11 @@ async function connect(wsUrl: string, onClose: () => Promise<void>): Promise<Pag
     } else if (msg.method === 'Runtime.exceptionThrown') {
       problems.push(`exception : ${msg.params.exceptionDetails.exception?.description ?? msg.params.exceptionDetails.text}`);
     } else if (msg.method === 'Runtime.consoleAPICalled' && ['error', 'warning'].includes(msg.params.type)) {
-      problems.push(`console.${msg.params.type} : ${msg.params.args.map((a: any) => a.value ?? a.description).join(' ')}`);
+      // Objets (événements d'erreur…) : leur résumé, plutôt que le seul nom de classe minifié.
+      const { type, args } = msg.params;
+      void Promise.all(args.map((a: any) => (a.objectId && a.subtype !== 'error' ? describe(a.objectId) : a.value ?? a.description))).then(
+        (parts) => problems.push(`console.${type} : ${parts.join(' ')}`),
+      );
     } else if (msg.method === 'Log.entryAdded' && msg.params.entry.level === 'error') {
       problems.push(`journal : ${msg.params.entry.text}`);
     }
@@ -48,6 +52,17 @@ async function connect(wsUrl: string, onClose: () => Promise<void>): Promise<Pag
       pending.set(i, r);
       ws.send(JSON.stringify({ id: i, method, params }));
     });
+  const describe = async (objectId: string): Promise<string> =>
+    (
+      await send('Runtime.callFunctionOn', {
+        objectId,
+        returnByValue: true,
+        functionDeclaration: `function () {
+          const e = this.error ?? this;
+          return [this.constructor?.name, this.type, e?.name, e?.message, e?.stack?.split('\\n').slice(1, 3).join(' / ')].filter(Boolean).join(' · ');
+        }`,
+      })
+    ).result.result.value;
   await send('Runtime.enable');
   await send('Log.enable');
   return {

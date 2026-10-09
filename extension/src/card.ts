@@ -91,8 +91,16 @@ async function showCard() {
     check.disabled = true;
     msg.textContent = '';
     const message: CheckPageMessage = { type: 'check-lodging-page', found };
-    const response = (await api.runtime.sendMessage(message)) as CheckPageResponse | undefined;
-    check.disabled = false;
+    let response: CheckPageResponse | undefined;
+    try {
+      response = (await api.runtime.sendMessage(message)) as CheckPageResponse | undefined;
+    } catch {
+      // Extension mise à jour ou rechargée depuis l'ouverture de la page : ce script est orphelin.
+      msg.textContent = "L'extension a été mise à jour : rechargez la page pour vérifier ce logement.";
+      return;
+    } finally {
+      check.disabled = false;
+    }
     if (response?.panelOpened) {
       host.remove();
     } else {
