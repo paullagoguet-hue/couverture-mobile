@@ -121,11 +121,14 @@ const manifests = {
 };
 
 /** _locales/<langue>/messages.json : textes du manifeste, tirés du dictionnaire de l'extension. */
+/** Noms de dossier imposés par Chrome (liste fermée : « pt » et « zh » seuls sont refusés). */
+const LOCALE_DIRS: Partial<Record<(typeof LANGS)[number], string>> = { pt: 'pt_PT', zh: 'zh_CN' };
+
 function writeLocales(outDir: string) {
   for (const lang of LANGS) {
     const m = messagesFor(lang);
     const messages = Object.fromEntries((['extName', 'extDescription', 'menuPage'] as const).map((k) => [k, { message: m[k] }]));
-    const dir = resolve(outDir, '_locales', lang);
+    const dir = resolve(outDir, '_locales', LOCALE_DIRS[lang] ?? lang);
     mkdirSync(dir, { recursive: true });
     writeFileSync(resolve(dir, 'messages.json'), JSON.stringify(messages, null, 2) + '\n');
   }

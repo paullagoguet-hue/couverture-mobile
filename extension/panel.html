@@ -49,9 +49,9 @@
       #search { position: relative; }
       .search-row { display: flex; gap: 6px; }
       .search-field { position: relative; flex: 1; min-width: 0; }
-      .search-field .icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+      .search-field .icon { position: absolute; inset-inline-start: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
       .search-field input {
-        width: 100%; font: inherit; padding: 8px 10px 8px 34px;
+        width: 100%; font: inherit; padding-block: 8px; padding-inline: 34px 10px;
         border: 1px solid var(--border); border-radius: 10px; background: var(--bg);
         transition: border-color 0.15s, background 0.15s;
       }
@@ -68,13 +68,13 @@
       }
       .countries button[aria-checked='true'] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
       .flag-icon { width: 18px; height: 12px; flex: none; border-radius: 2px; }
-      .place-head .flag { margin-left: auto; display: inline-flex; }
+      .place-head .flag { margin-inline-start: auto; display: inline-flex; }
       .suggestions {
         position: absolute; z-index: 30; left: 0; right: 0; margin: 4px 0 0; padding: 4px; list-style: none;
         background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
       }
       .suggestions button {
-        display: block; width: 100%; text-align: left; padding: 6px 9px;
+        display: block; width: 100%; text-align: start; padding: 6px 9px;
         border: none; border-radius: 6px; background: none; cursor: pointer; color: inherit;
       }
       .suggestions button:hover, .suggestions button:focus { background: var(--accent-soft); outline: none; }
@@ -126,7 +126,7 @@
       /* Choix entre plusieurs lieux */
       .choices { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 6px; }
       .choices button {
-        width: 100%; text-align: left; cursor: pointer; display: flex; gap: 8px; align-items: center;
+        width: 100%; text-align: start; cursor: pointer; display: flex; gap: 8px; align-items: center;
         padding: 8px 10px; border: 1px solid var(--border); border-radius: 9px; background: #fff;
       }
       .choices button:hover { border-color: var(--accent); background: var(--best); }
@@ -147,7 +147,7 @@
       .operators { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
       .cell {
         width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
-        padding: 7px 7px 7px 11px; cursor: pointer; text-align: left;
+        padding: 7px 7px 7px 11px; cursor: pointer; text-align: start;
         border: 1px solid var(--border); border-radius: 10px; background: #fff; color: inherit;
         transition: border-color 0.12s, box-shadow 0.12s;
       }
@@ -181,7 +181,7 @@
       .legend { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
       .legend li { display: grid; grid-template-columns: 112px 1fr; gap: 10px; align-items: center; font-size: 12.5px; }
       .legend .pill { min-width: 0; font-size: 12px; padding: 4px 6px; }
-      .facts { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: 12.5px; }
+      .facts { margin: 0; padding-inline-start: 18px; display: grid; gap: 5px; font-size: 12.5px; }
       .hint { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
       .hint .icon { width: 13px; height: 13px; color: #f2a900; vertical-align: -2px; }
       #info h3 + p.hint { margin-top: 0; }

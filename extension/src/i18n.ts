@@ -1,5 +1,6 @@
 /**
- * Traductions de l'extension : français (référence), anglais, espagnol, allemand, italien.
+ * Traductions de l'extension : français (référence), anglais, espagnol, allemand,
+ * italien ici ; portugais, néerlandais, russe, chinois et arabe dans locales/.
  *
  * Langue : celle choisie dans la page Infos (storage.local « lang »), sinon
  * celle du navigateur, sinon l'anglais. Les textes peuvent contenir du HTML
@@ -10,10 +11,20 @@
  * public/_locales (format imposé par les navigateurs).
  */
 import { api } from './browser.ts';
+import ar from './locales/ar.ts';
+import nl from './locales/nl.ts';
+import ptPT from './locales/pt.ts';
+import ru from './locales/ru.ts';
+import zh from './locales/zh.ts';
 
-export type Lang = 'fr' | 'en' | 'es' | 'de' | 'it';
-export const LANGS: Lang[] = ['fr', 'en', 'es', 'de', 'it'];
-export const LANG_LABELS: Record<Lang, string> = { fr: 'Français', en: 'English', es: 'Español', de: 'Deutsch', it: 'Italiano' };
+export type Lang = 'fr' | 'en' | 'es' | 'de' | 'it' | 'pt' | 'nl' | 'ru' | 'zh' | 'ar';
+export const LANGS: Lang[] = ['fr', 'en', 'es', 'de', 'it', 'pt', 'nl', 'ru', 'zh', 'ar'];
+export const LANG_LABELS: Record<Lang, string> = {
+  fr: 'Français', en: 'English', es: 'Español', de: 'Deutsch', it: 'Italiano',
+  pt: 'Português', nl: 'Nederlands', ru: 'Русский', zh: '中文（简体）', ar: 'العربية',
+};
+/** Langues écrites de droite à gauche. */
+const RTL: Lang[] = ['ar'];
 export const LANG_KEY = 'lang';
 
 const fr = {
@@ -158,7 +169,7 @@ const fr = {
 };
 
 export type MessageKey = keyof typeof fr;
-type Messages = Record<MessageKey, string>;
+export type Messages = Record<MessageKey, string>;
 
 const en: Messages = {
   extName: 'Check Mobile Coverage',
@@ -688,11 +699,13 @@ const it: Messages = {
   cardReady: "Risultato pronto: clicca sull'icona arancione dell'estensione, nella barra degli indirizzi.",
 };
 
-const MESSAGES: Record<Lang, Messages> = { fr, en, es, de, it };
+const MESSAGES: Record<Lang, Messages> = { fr, en, es, de, it, pt: ptPT, nl, ru, zh, ar };
 
 /** Textes d'une langue (compilation : fichiers _locales du manifeste). */
 export const messagesFor = (l: Lang): Readonly<Messages> => MESSAGES[l];
-const LOCALES: Record<Lang, string> = { fr: 'fr-FR', en: 'en-GB', es: 'es-ES', de: 'de-DE', it: 'it-IT' };
+const LOCALES: Record<Lang, string> = {
+  fr: 'fr-FR', en: 'en-GB', es: 'es-ES', de: 'de-DE', it: 'it-IT', pt: 'pt-PT', nl: 'nl-NL', ru: 'ru-RU', zh: 'zh-CN', ar: 'ar',
+};
 
 const isLang = (v: unknown): v is Lang => typeof v === 'string' && (LANGS as string[]).includes(v);
 
@@ -744,4 +757,5 @@ export function translatePage(root: ParentNode = document) {
     root.querySelectorAll<HTMLElement>(`[${data}]`).forEach((el) => el.setAttribute(attr, t(el.getAttribute(data) as MessageKey)));
   }
   document.documentElement.lang = current;
+  document.documentElement.dir = RTL.includes(current) ? 'rtl' : 'ltr';
 }
