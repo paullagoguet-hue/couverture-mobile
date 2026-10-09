@@ -1,0 +1,57 @@
+# Construit les tuiles PMTiles de couverture mobile pour le Luxembourg, à partir
+# de l'relevé géographique de l'ILR (cf. data-pipeline/lu/build_lu.sh).
+#
+# Lancement manuel : onglet Actions > « Données de couverture (Luxembourg) » > Run workflow.
+name: Données de couverture (Luxembourg)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-data-lu
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Tuiles Luxembourg
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Cache des outils compilés (tippecanoe, pmtiles)
+        uses: actions/cache@v6
+        with:
+          path: data-pipeline/.tools
+          key: tools-ubuntu-24.04-${{ hashFiles('data-pipeline/env.sh') }}
+
+      - name: Dépendances
+        run: bash data-pipeline/install_deps.sh
+
+      - name: Construction
+        env:
+          TILES_DIR: ${{ github.workspace }}/tiles
+          WORK_DIR: ${{ runner.temp }}/work
+        run: bash data-pipeline/lu/build_lu.sh
+
+      - name: Résumé
+        run: |
+          {
+            echo "### Luxembourg : $(jq '.layers | length' tiles/lu/manifest.json) couche(s)"
+            echo "| couche | Mo | tuiles z12 | max z12 (Ko) |"
+            echo "|---|---:|---:|---:|"
+            for s in tiles/lu/*.stats.json; do
+              id=$(basename "$s" .stats.json)
+              echo "| $id | $(jq -r .file_mb "$s") | $(jq -r '.by_zoom["12"].tiles // "-"' "$s") | $(jq -r '.by_zoom["12"].max_kb // "-"' "$s") |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tiles-lu
+          path: tiles/lu/
+          compression-level: 0
+          retention-days: 14
