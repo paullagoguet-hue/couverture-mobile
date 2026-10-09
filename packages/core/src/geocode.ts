@@ -203,6 +203,17 @@ async function geocodeEs(text: string, { limit = 5, signal, fetchFn = fetch }: G
 
 // --- Portugal, Belgique : Photon (OpenStreetMap) -------------------------------
 
+/** Mots trop courants dans les adresses pour prouver qu'un résultat correspond à la recherche. */
+const COMMON_WORDS = new Set(
+  'rue avenue boulevard chemin place quai impasse allee route rua avenida travessa largo praca estrada calle carrer plaza paseo camino straat laan weg plein steenweg dreef kaai lei des del della dos das les los las van der het den sur pres'.split(' '),
+);
+
+/** Mots significatifs d'un texte : minuscules sans accents, 3 lettres ou plus, hors numéros et mots courants. */
+const significantWords = (text: string) =>
+  fold(text)
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length >= 3 && !/^\d+$/.test(w) && !COMMON_WORDS.has(w));
+
 /** Emprise de chaque pays (Açores et Madère comprises) ; les réponses sont ensuite filtrées sur le pays. */
 const PHOTON_BBOX: Partial<Record<CountryCode, string>> = { pt: '-31.6,32.3,-6.1,42.2', be: '2.5,49.45,6.45,51.55' };
 
@@ -220,7 +231,18 @@ async function geocodePhoton(text: string, country: 'pt' | 'be', { limit = 5, si
   const resp = await fetchFn(url, { signal });
   if (!resp.ok) throw new Error(`Géocodage indisponible (${resp.status})`);
   const json = await resp.json();
-  const features: any[] = (json.features ?? []).filter((f: any) => f.properties?.countrycode === country.toUpperCase());
+  // Photon renvoie toujours quelque chose, même sans rapport (« Bonneval-sur-Arc »
+  // cherché en Belgique -> une rue de Charleroi, ou de Stoumont via « arc ») : on
+  // exige le mot le plus long de la recherche, ou au moins deux mots significatifs.
+  const wanted = significantWords(q);
+  const longest = wanted.reduce((a, b) => (b.length > a.length ? b : a), '');
+  const related = (f: any) => {
+    if (!wanted.length) return true;
+    const p = f.properties ?? {};
+    const found = new Set(significantWords([p.name, p.street, p.city, p.town, p.village, p.county, p.district, p.locality].filter(Boolean).join(' ')));
+    return found.has(longest) || wanted.filter((w) => found.has(w)).length >= 2;
+  };
+  const features: any[] = (json.features ?? []).filter((f: any) => f.properties?.countrycode === country.toUpperCase() && related(f));
   // Adresse avec numéro : un résultat « maison » d'abord, s'il y en a un.
   if (/\d/.test(q)) {
     const house = features.findIndex((f) => f.properties.type === 'house');
@@ -322,67 +344,4 @@ export async function suggestAddresses(
     if (!prev || r.score > prev.score) byLabel.set(r.label, r);
   }
   return [...byLabel.values()].sort((a, b) => b.score - a.score).slice(0, limit);
-}
-
-/** Mots propres aux adresses espagnoles (« avenida », commun au portugais, n'en fait pas partie). */
-const SPANISH_HINT = /(^|[\s,])(calle|c\/|carrer|plaza|pza\.?|paseo|camino|carretera|travesía|urbanización|españa|spain|espagne)(?=[\s,.]|$)/i;
-/** Mots propres aux adresses portugaises. */
-const PORTUGUESE_HINT = /(^|[\s,])(rua|travessa|largo|praça|praca|estrada|beco|calçada|calcada|alameda|portugal)(?=[\s,.]|$)/i;
-
-/**
- * Texte dont on ignore le pays (texte sélectionné, adresse d'annonce) : les
- * géocodeurs de tous les pays en parallèle, puis choix de la réponse la plus
- * crédible. Le géocodeur français répond presque toujours quelque chose, même
- * pour « Calle Mayor 1 Madrid » (« Rue de Madrid », score faible) ou
- * « Benidorm » (« Rue de Benidorm, Perpignan », 0,70) :
- *  1. un lieu dont le nom est exactement le texte (« Benidorm », « Toulouse »),
- *     une commune avant un hameau ; s'il existe dans plusieurs pays (« Porto »),
- *     on propose le choix ;
- *  2. puis un indice de langue (« calle », « rua », « España »…) ;
- *  3. la Belgique si la commune écrite est belge (et pas française), puis le
- *     français s'il est sûr de lui (score ≥ 0,6) ;
- *  4. puis le pays dont la première réponse est dans la commune écrite ;
- *  5. sinon l'espagnol, le portugais, le belge, à défaut le français.
- */
-/** Délai par géocodeur dans geocodeAnyCountry. */
-const ANY_COUNTRY_TIMEOUT_MS = 6000;
-
-export async function geocodeAnyCountry(
-  text: string,
-  { limit = 5, signal, fetchFn = fetch }: Omit<GeocodeOptions, 'country' | 'autocomplete'> = {},
-): Promise<GeocodeResult[]> {
-  // Chaque géocodeur a son propre délai : un service lent ou indisponible est
-  // ignoré (aucune réponse) au lieu de bloquer la recherche dans tous les pays.
-  const each = () => AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(ANY_COUNTRY_TIMEOUT_MS)]);
-  const settled = await Promise.allSettled([
-    geocodeFr(text, { limit, signal: each(), fetchFn }),
-    geocodeEs(text, { limit, signal: each(), fetchFn }),
-    geocodePhoton(text, 'pt', { limit, signal: each(), fetchFn }),
-    geocodePhoton(text, 'be', { limit, signal: each(), fetchFn }),
-  ]);
-  if (signal?.aborted) throw signal.reason;
-  if (settled.every((s) => s.status === 'rejected')) throw (settled[0] as PromiseRejectedResult).reason;
-  const [fr, es, pt, be] = settled.map((s) => (s.status === 'fulfilled' ? s.value : []));
-  const by: Record<CountryCode, GeocodeResult[]> = { fr, es, pt, be };
-
-  const wanted = fold(text.replace(/\s+/g, ' ').trim());
-  const isPlaceNamed = (r: GeocodeResult) => (r.type === 'municipality' || r.type === 'locality') && fold(r.label.split(',')[0].trim()) === wanted;
-  // Une commune de ce nom l'emporte sur un hameau homonyme ailleurs (« Funchal » : Madère, pas Tui).
-  const isMunicipality = (r: GeocodeResult) => isPlaceNamed(r) && r.type === 'municipality';
-  for (const match of [isMunicipality, isPlaceNamed]) {
-    const exact = (['fr', 'es', 'pt', 'be'] as const).filter((c) => by[c].some(match));
-    if (exact.length === 1) return by[exact[0]];
-    if (exact.length > 1) return exact.map((c) => ({ ...by[c].find(match)!, score: 0.9 })); // « Porto » : au choix
-  }
-
-  if (es.length && SPANISH_HINT.test(text)) return es;
-  if (pt.length && PORTUGUESE_HINT.test(text)) return pt;
-  const foldedText = fold(text);
-  const cityWritten = (r: GeocodeResult | undefined) => nameInText(r?.city, foldedText);
-  // Belgique avant le score français : « Rue de la Loi 16, Bruxelles » existe aussi en France.
-  if (cityWritten(be[0]) && !cityWritten(fr[0])) return be;
-  if (fr.length && fr[0].score >= 0.6) return fr;
-  if (cityWritten(es[0])) return es;
-  if (cityWritten(pt[0])) return pt;
-  return es.length ? es : pt.length ? pt : be.length ? be : fr;
 }

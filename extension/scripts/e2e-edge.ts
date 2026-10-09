@@ -39,8 +39,9 @@ const CASES: Case[] = [
   { name: 'Annonce approximative (1 km)', query: `page=${JSON.stringify(TOURS)}`, expect: { note: /1 km/, fromPage: true } },
   { name: 'Adresse introuvable', query: 'q=xqzwv kkjjhh' },
   { name: 'Espagne : adresse (pays choisi)', query: 'pays=es&q=Calle Mayor 1 Madrid', expect: { titre: 'Calle Mayor 1' } },
-  { name: 'Espagne : clic droit, pays reconnu', query: 'q=Gran Vía 28, Madrid', expect: { titre: 'Gran Via 28' } },
-  { name: 'Espagne : clic droit sur un nom de ville', query: 'q=Benidorm', expect: { titre: 'Benidorm' } },
+  { name: 'Espagne : clic droit sur un site .es', query: 'q=Gran Vía 28, Madrid&url=https://www.ejemplo.es/anuncio', expect: { titre: 'Gran Via 28' } },
+  { name: 'Espagne : nom de ville sur un site .es', query: 'q=Benidorm&url=https://www.ejemplo.es/', expect: { titre: 'Benidorm' } },
+  { name: 'Clic droit sans indice : pays choisi (France)', query: 'q=Gran Vía 28, Madrid', expect: { titre: 'Adresse introuvable (France)' } },
   {
     name: 'Espagne : annonce sans coordonnées, pays publié',
     query: `page=${JSON.stringify({ name: 'Hotel', address: 'Calle Mayor 1, 28013 Madrid', country: 'ES' })}`,
@@ -52,14 +53,14 @@ const CASES: Case[] = [
     expect: { titre: 'Madrid', note: /1 km/, fromPage: true },
   },
   { name: 'Portugal : adresse (pays choisi)', query: 'pays=pt&q=Rua Augusta 100 Lisboa', expect: { titre: 'Rua Augusta 100' } },
-  { name: 'Portugal : clic droit, pays reconnu', query: 'q=Rua Augusta 100, Lisboa', expect: { titre: 'Rua Augusta 100' } },
+  { name: 'Portugal : pays écrit dans le texte', query: 'q=Rua Augusta 100, Lisboa, Portugal', expect: { titre: 'Rua Augusta 100' } },
   {
     name: 'Portugal : annonce avec coordonnées',
     query: `page=${JSON.stringify({ name: 'Apartamento', address: 'Lisboa', lat: 38.7223, lng: -9.1393, precision: 'approximate', radiusM: 1000 })}`,
     expect: { titre: 'Lisboa', note: /1 km/, fromPage: true },
   },
   { name: 'Belgique : adresse (pays choisi)', query: 'pays=be&q=Rue de la Loi 16 Bruxelles', expect: { titre: 'Rue de la Loi' } },
-  { name: 'Belgique : clic droit, pays reconnu', query: 'q=Meir 50, Antwerpen', expect: { titre: 'Meir 50' } },
+  { name: 'Belgique : clic droit sur un site .be', query: 'q=Meir 50, Antwerpen&url=https://www.immoweb.be/fr/annonce/1', expect: { titre: 'Meir 50' } },
   {
     name: 'Belgique : annonce avec coordonnées',
     query: `page=${JSON.stringify({ name: 'Appartement', address: 'Bruxelles', lat: 50.8467, lng: 4.3525, precision: 'approximate', radiusM: 1000 })}`,
@@ -98,8 +99,10 @@ console.log(`Extension chargée : ${browser.extensionId}\n`);
 let failures = 0;
 try {
   for (const c of CASES) {
-    // Français sauf indication contraire (la langue du navigateur de test peut varier).
-    const query = /(^|&)lang=/.test(c.query ?? '') ? c.query! : [c.query, 'lang=fr'].filter(Boolean).join('&');
+    // Français et pays choisi « France » sauf indication contraire : la langue du navigateur
+    // de test peut varier, et le pays choisi est mémorisé d'un test à l'autre.
+    const defaults = ['lang=fr', 'choisi=fr'].filter((d) => !new RegExp(`(^|&)${d.split('=')[0]}=`).test(c.query ?? ''));
+    const query = [c.query, ...defaults].filter(Boolean).join('&');
     const page = await browser.open(`panel.html?${query.replace(/ /g, '%20')}`);
     if (c.actions) {
       await sleep(1500);

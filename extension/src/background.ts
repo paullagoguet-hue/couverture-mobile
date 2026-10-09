@@ -124,7 +124,8 @@ api.storage.local.onChanged.addListener(async (changes) => {
 api.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === MENU_SELECTION && info.selectionText) {
     void openPanel(tab);
-    sendToPanel({ kind: 'selection', text: info.selectionText });
+    // pageUrl : fourni par le menu ; seul son nom de domaine sert (pays du site), rien n'est envoyé.
+    sendToPanel({ kind: 'selection', text: info.selectionText, pageUrl: info.pageUrl });
   } else if (info.menuItemId === MENU_PAGE && tab) {
     void openPanel(tab);
     void checkLodgingPage(tab);

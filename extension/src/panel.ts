@@ -10,10 +10,12 @@
  * ses opérateurs) et son géocodeur. Le pays est fixé AVANT de chercher
  * l'adresse, dans cet ordre :
  *  1. coordonnées publiées par l'annonce → pays du point (countryAt) ;
- *  2. pays publié par l'annonce (addressCountry) ou propre au site (Leboncoin…) ;
- *  3. saisie : pays choisi par l'utilisateur (boutons au-dessus du champ) ;
- *  4. seulement pour un texte sélectionné ou une annonce sans indice : les
- *     deux géocodeurs, et la réponse la plus crédible (geocodeAnyCountry).
+ *  2. pays écrit à la fin du texte (« …, Portugal »), ou publié par l'annonce
+ *     (addressCountry) ou propre au site (Leboncoin…) ;
+ *  3. pays du site consulté (nom de domaine national : .pt, .es, .be, .fr) ;
+ *  4. sinon le pays choisi par l'utilisateur (boutons au-dessus du champ).
+ * La recherche se fait ensuite dans ce seul pays (jamais de devinette entre
+ * pays : les homonymes sont partout) ; introuvable, on propose les autres pays.
  *
  * Robustesse : chaque recherche a son propre AbortController ; une nouvelle
  * recherche (saisie, clic droit, page d'annonce…) annule la précédente, dont
@@ -28,10 +30,10 @@ import {
   communeToCoverage,
   COUNTRY_CODES,
   countryAt,
+  countryFromHost,
   countryFromText,
   CoverageReader,
   geocode,
-  geocodeAnyCountry,
   isCountryCode,
   isUnambiguous,
   loadCommuneCoverage,
@@ -244,12 +246,34 @@ function showWelcome() {
 interface RunOptions {
   note?: string;
   radiusM?: number;
-  /**
-   * Pays où chercher : connu d'avance (annonce), ou 'any' pour un texte sans
-   * indice (cf. geocodeAnyCountry). Par défaut : le pays choisi par l'utilisateur.
-   */
-  where?: CountryCode | 'any';
+  /** Pays où chercher (cf. countryOf) ; par défaut : le pays choisi par l'utilisateur. */
+  where?: CountryCode;
 }
+
+/** En dessous, une réponse du géocodeur français ne correspond pas vraiment au texte (« Gran Vía 28, Madrid » -> 0,39). */
+const MIN_SCORE = 0.45;
+
+/**
+ * Pays d'une demande, avant toute recherche (cf. en-tête) ; 'other' : pays non
+ * pris en charge, publié par l'annonce.
+ */
+function countryOf(o: { text?: string; published?: string; host?: string }): CountryCode | 'other' {
+  // Pays écrit à la fin du texte : « Rua Augusta 100, Lisboa, Portugal ».
+  const lastPart = o.text?.split(',').pop()?.trim();
+  const written = lastPart && lastPart !== o.text?.trim() ? countryFromText(lastPart) : null;
+  if (written && written !== 'other') return written;
+  const published = countryFromText(o.published);
+  if (published) return published;
+  return countryFromHost(o.host) ?? country;
+}
+
+const hostOf = (url: string | undefined) => {
+  try {
+    return url ? new URL(url).hostname : undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 /** Point d'entrée : un texte sélectionné, saisi ou lu sur la page. */
 async function run(text: string, options: RunOptions = {}) {
@@ -257,22 +281,20 @@ async function run(text: string, options: RunOptions = {}) {
   search.setText(text);
   const r = startRun(note, radiusM);
   loading(t('searching', { q: escapeHtml(text) }), r.note);
-  const anyCountry = where === 'any';
   const others = COUNTRY_CODES.filter((c) => c !== where);
+  if (where !== country) setCountry(where); // pays déduit de la page ou du texte : affiché sur les boutons
   try {
-    const results = anyCountry
-      ? await geocodeAnyCountry(text, { limit: 5, signal: r.signal })
-      : await geocode(text, { limit: 5, country: where, signal: AbortSignal.any([r.signal, AbortSignal.timeout(GEOCODE_TIMEOUT_MS)]) });
+    const results = (
+      await geocode(text, { limit: 5, country: where, signal: AbortSignal.any([r.signal, AbortSignal.timeout(GEOCODE_TIMEOUT_MS)]) })
+    ).filter((p) => p.score >= MIN_SCORE);
     if (r.signal.aborted) return;
     if (!results.length) {
       message(
         {
           icon: ICONS.pin,
-          title: anyCountry ? t('notFound') : t('notFoundIn', { country: countryName(where) }),
+          title: t('notFoundIn', { country: countryName(where) }),
           body: `<p>${t('notFoundHint')}</p>`,
-          action: anyCountry
-            ? undefined
-            : others.map((c) => `<button class="btn" type="button" data-country="${c}">${FLAGS[c]}${t('searchIn', { country: countryName(c) })}</button>`).join(' '),
+          action: others.map((c) => `<button class="btn" type="button" data-country="${c}">${FLAGS[c]}${t('searchIn', { country: countryName(c) })}</button>`).join(' '),
         },
         r.note,
       );
@@ -285,7 +307,6 @@ async function run(text: string, options: RunOptions = {}) {
       );
       return;
     }
-    if (results[0].country !== country) setCountry(results[0].country);
     if (isUnambiguous(results)) return await showCoverage(results[0], r);
     // Plusieurs lieux plausibles : l'utilisateur choisit.
     show(
@@ -499,7 +520,9 @@ function handlePending(p: PendingQuery) {
   if (p.at <= lastPendingAt) return;
   lastPendingAt = p.at;
   if (p.kind === 'selection') {
-    void run(p.text, { where: 'any' });
+    // Pas de pays publié pour une sélection : « other » impossible, repli sur le pays choisi par sûreté.
+    const where = countryOf({ text: p.text, host: hostOf(p.pageUrl) });
+    void run(p.text, { where: where === 'other' ? country : where });
   } else if (p.kind === 'not-lodging-page') {
     currentRun?.abort();
     message({
@@ -549,15 +572,14 @@ function handlePending(p: PendingQuery) {
         startRun(note, radius),
       );
     } else {
-      // Pays publié par l'annonce ou propre au site ; sinon recherche dans tous les pays.
-      const published = countryFromText(p.country);
-      if (published === 'other') {
+      // Pays publié par l'annonce ou propre au site, sinon celui du site, sinon le pays choisi.
+      const where = countryOf({ text: p.address, published: p.country, host: p.pageHost });
+      if (where === 'other') {
         currentRun?.abort();
         message({ icon: ICONS.pin, title: t('countryNotCovered'), body: `<p>${escapeHtml(t('coversCountries', { countries: countriesList() }))}</p>` }, note);
         return;
       }
-      if (published) setCountry(published);
-      void run(cleanAddress(p.address!), { note, radiusM: radius, where: published ?? 'any' });
+      void run(cleanAddress(p.address!), { note, radiusM: radius, where });
     }
   }
 }
@@ -567,7 +589,8 @@ const PENDING_MAX_AGE_MS = 30_000;
 
 /** Démarrage : pays mémorisé, puis requête en attente (ou accueil). */
 async function start() {
-  // Tests hors extension : panel.html?pays=es&q=<texte> (sélection) ou ?page=<JSON> (adresse lue sur une page).
+  // Tests hors extension : panel.html?q=<texte>[&url=<page>] (clic droit), ?pays=es&q=<texte> (saisie),
+  // ?page=<JSON> (adresse lue sur une page).
   const params = new URLSearchParams(location.search);
   const testCountry = params.get('pays');
   const testQuery = params.get('q');
@@ -581,13 +604,16 @@ async function start() {
 
   try {
     const saved = (await api?.storage.local.get(COUNTRY_KEY))?.[COUNTRY_KEY];
-    setCountry(isCountryCode(testCountry) ? testCountry : isCountryCode(saved) ? saved : 'fr', false);
+    // Tests : ?choisi=fr fixe le pays choisi (comme un clic sur les boutons) sans forcer la saisie.
+    const chosen = params.get('choisi');
+    setCountry(isCountryCode(testCountry) ? testCountry : isCountryCode(chosen) ? chosen : isCountryCode(saved) ? saved : 'fr', false);
   } catch {
     setCountry('fr', false);
   }
 
   if (testQuery) {
-    void run(testQuery, { where: isCountryCode(testCountry) ? testCountry : 'any' });
+    if (isCountryCode(testCountry)) void run(testQuery, { where: testCountry });
+    else handlePending({ kind: 'selection', text: testQuery, pageUrl: params.get('url') ?? undefined, at: Date.now() });
   } else if (testPage) {
     handlePending({ kind: 'page', ...JSON.parse(testPage), at: Date.now() });
   } else if (api) {

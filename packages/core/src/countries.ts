@@ -55,6 +55,12 @@ export function countryFromText(value: string | undefined): CountryCode | 'other
   return ISO_CODES[key] ?? NAME_PREFIXES.find(([prefix]) => key.startsWith(prefix))?.[1] ?? 'other';
 }
 
+/** Pays d'un nom de domaine national (« www.idealista.pt » -> pt) ; null pour .com, .net… */
+export function countryFromHost(hostname: string | undefined): CountryCode | null {
+  const tld = (hostname ?? '').toLowerCase().replace(/\.$/, '').split('.').pop() ?? '';
+  return isCountryCode(tld) ? tld : null;
+}
+
 /** Dossier des tuiles d'un pays (URL absolue terminée par « / »). */
 export const tilesBaseFor = (root: string, country: CountryCode) => new URL(COUNTRIES[country].path, root).href;
 

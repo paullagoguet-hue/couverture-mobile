@@ -127,6 +127,8 @@ export interface PageAddress {
   radiusM?: number;
   /** Pays publié par la page (« ES », « España »…) ou propre au site ; interprété par le panneau. */
   country?: string;
+  /** Nom de domaine de la page (pays du site : airbnb.pt…). */
+  pageHost?: string;
 }
 
 /**
@@ -142,7 +144,7 @@ export function extractStructuredAddress(rules: LodgingRule[]): PageAddress | nu
   const rule = onSite.find((r) => new RegExp(r.pathRegex).test(location.pathname));
   if (!rule) return { notLodging: true, sameSite: onSite.length > 0 }; // seule l'adresse de la page a été regardée
 
-  const result: PageAddress = { precision: rule.precision, radiusM: rule.radiusM, country: rule.country };
+  const result: PageAddress = { precision: rule.precision, radiusM: rule.radiusM, country: rule.country, pageHost: hostname };
   const setCoords = (lat: unknown, lng: unknown) => {
     const la = Number(lat), lo = Number(lng);
     if (Number.isFinite(la) && Number.isFinite(lo) && Math.abs(la) <= 90 && Math.abs(lo) <= 180 && (la !== 0 || lo !== 0)) {
