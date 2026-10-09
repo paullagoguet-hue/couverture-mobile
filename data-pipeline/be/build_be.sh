@@ -19,7 +19,6 @@ WFS=https://geo.bipt-data.be/geoserver/dp_mobile_detailed_overview/wfs
 MIN_ZOOM=${MIN_ZOOM:-8}
 MAX_ZOOM=${MAX_ZOOM:-12}
 TIPPECANOE_OPTS=${TIPPECANOE_OPTS:---no-simplification-of-shared-nodes --simplify-only-low-zooms --drop-smallest-as-needed}
-declare -A LABELS=([orange]=Orange [proximus]=Proximus [telenet]=Telenet)
 LAYERS=(Orange Proximus Telenet)
 
 work="$WORK_DIR/be"
@@ -37,7 +36,7 @@ build_layer() {
   [ "$levels" = "[0,1,2,3]" ] || die "[$id] niveaux inattendus : $levels"
   ogr2ogr -f GeoJSONSeq "$work/$id.geojsons" "$work/$id.json" \
     -s_srs EPSG:3857 -t_srs EPSG:4326 -explodecollections -lco COORDINATE_PRECISION=6 \
-    -dialect SQLite -sql "SELECT geometry, CASE Layer WHEN 3 THEN 'TBC' WHEN 2 THEN 'BC' WHEN 1 THEN 'CL' END AS niveau FROM \"$name\" WHERE Layer > 0"
+    -dialect SQLite -sql "SELECT geometry, CASE Layer WHEN 3 THEN 'TBC' WHEN 2 THEN 'BC' WHEN 1 THEN 'CL' END AS niveau FROM \"$id\" WHERE Layer > 0"
   rm -f "$work/$id.json"
   # shellcheck disable=SC2086
   tippecanoe -o "$out/$id.pmtiles" --force --quiet \
