@@ -1,5 +1,5 @@
 /**
- * Traductions de l'extension : français (référence), anglais, espagnol.
+ * Traductions de l'extension : français (référence), anglais, espagnol, allemand, italien.
  *
  * Langue : celle choisie dans la page Infos (storage.local « lang »), sinon
  * celle du navigateur, sinon l'anglais. Les textes peuvent contenir du HTML
@@ -11,9 +11,9 @@
  */
 import { api } from './browser.ts';
 
-export type Lang = 'fr' | 'en' | 'es';
-export const LANGS: Lang[] = ['fr', 'en', 'es'];
-export const LANG_LABELS: Record<Lang, string> = { fr: 'Français', en: 'English', es: 'Español' };
+export type Lang = 'fr' | 'en' | 'es' | 'de' | 'it';
+export const LANGS: Lang[] = ['fr', 'en', 'es', 'de', 'it'];
+export const LANG_LABELS: Record<Lang, string> = { fr: 'Français', en: 'English', es: 'Español', de: 'Deutsch', it: 'Italiano' };
 export const LANG_KEY = 'lang';
 
 const fr = {
@@ -409,11 +409,265 @@ const es: Messages = {
   cardReady: 'Resultado listo: haz clic en el icono naranja de la extensión, en la barra de direcciones, para verlo.',
 };
 
-const MESSAGES: Record<Lang, Messages> = { fr, en, es };
+const de: Messages = {
+  extName: 'Mobilfunkabdeckung prüfen',
+  extDescription: '4G- und 5G-Abdeckung aller Netzbetreiber an jeder Adresse in Frankreich und Spanien, nach amtlichen Karten. Ohne Konto.',
+  menuSelection: 'Mobilfunkabdeckung prüfen',
+  menuPage: 'Mobilfunkempfang dieser Unterkunft prüfen',
+
+  subtitle: '4G und 5G · offene Daten',
+  infoButton: 'Infos und Quellen',
+  countriesAria: 'Land der Suche',
+  country_fr: 'Frankreich',
+  country_es: 'Spanien',
+  placeholder: 'Adresse oder Ort',
+  submit: 'Prüfen',
+
+  welcomeTitle: 'Hat Ihr Handy dort Empfang?',
+  welcomeLead: '4G und 5G aller Netzbetreiber, in Frankreich und Spanien.',
+  stepType: 'Adresse eingeben',
+  stepSelect: 'Oder auf einer Seite markieren',
+  stepSelectHint: 'dann Rechtsklick',
+  stepListing: 'Auf einem Unterkunftsangebot',
+  stepListingHint: 'auf das orange Symbol klicken',
+  tryTitle: 'Ausprobieren',
+
+  searching: 'Suche nach „{q}“…',
+  reading: 'Abdeckung in {place} wird gelesen…',
+  notFound: 'Adresse nicht gefunden',
+  notFoundIn: 'Adresse nicht gefunden ({country})',
+  notFoundHint: 'Versuchen Sie es mit Ort oder Postleitzahl.',
+  searchIn: 'Suchen in: {country}',
+  which: 'Welche?',
+  searchFailed: 'Suche nicht möglich',
+  checkConnection: 'Prüfen Sie Ihre Verbindung.',
+  retry: 'Erneut versuchen',
+  coverageUnavailable: 'Abdeckung nicht verfügbar',
+  serverNoResponse: 'Der Server antwortet nicht.',
+  serverUnreachable: 'Server nicht erreichbar.',
+  retrySoon: 'Bitte gleich noch einmal versuchen.',
+
+  best: 'Am besten: {ops}',
+  bestBadge: 'hier am besten',
+  allSame: 'Gleiche Abdeckung bei allen Netzbetreibern.',
+  noNetworkHere: 'Hier weder 4G noch 5G.',
+  areaCommuneSurface: '5G-Anteil im gesamten Gemeindegebiet',
+  areaCommunePop: '5G-Anteil unter den {n} Einwohnern der Gemeinde',
+  areaCircle: '5G-Anteil im Umkreis von {d}',
+  communeCenter: 'Abdeckung im Ortszentrum',
+  mapCaption: 'Karte:',
+  fullMap: 'Vollständige Karte öffnen',
+  sourceLine: 'Theoretische Abdeckung, Quelle: {source}',
+  source_fr: 'Arcep',
+  source_es: 'spanisches Digitalministerium',
+  infoLink: 'Infos',
+
+  status_5g: '5G',
+  status_5gPartial: '5G teilweise · {pct}',
+  status_5gPartialShort: '5G teilweise',
+  status_4g: '4G',
+  status_4gPartial: '4G teilweise',
+  status_none: 'Kein Netz',
+  detail: '5G: {d5} · 4G: {d4}',
+  covered: 'abgedeckt',
+  notCovered: 'nicht abgedeckt',
+  ofSurroundings: 'der Umgebung',
+  ofCommune: 'der Gemeinde',
+  ofInhabitants: 'der Einwohner',
+  noData: 'keine Daten',
+  level_TBC: 'Sehr gut',
+  level_BC: 'Gut',
+  level_CL: 'Eingeschränkt',
+  levelLong_TBC: 'sehr gute Abdeckung',
+  levelLong_BC: 'gute Abdeckung',
+  levelLong_CL: 'eingeschränkte Abdeckung',
+
+  openListing: 'Öffnen Sie die Seite der Unterkunft',
+  thenClickIcon: 'Klicken Sie dann auf das orange Symbol.',
+  noAddress: 'Keine Adresse auf dieser Seite gefunden',
+  noAddressHint: 'Markieren Sie sie und klicken Sie rechts, oder geben Sie sie oben ein.',
+  readOnPage: 'Auf der Seite gelesen: {what}',
+  approxNote: 'Die Seite veröffentlicht die genaue Adresse nicht',
+  communeOnly: 'Die Seite veröffentlicht nur den Ort',
+  countryNotCovered: 'Land nicht abgedeckt',
+  coversCountries: 'Die Erweiterung deckt Frankreich und Spanien ab.',
+
+  back: '← Zurück',
+  infoColors: 'Die Farben',
+  legend_5g: '5G im gesamten Bereich',
+  legend_5gPartial: '5G auf mehr als der Hälfte des Bereichs (in %)',
+  legend_4g: 'kein 5G oder auf weniger als der Hälfte des Bereichs',
+  legend_4gPartial: '4G auf weniger als der Hälfte des Bereichs',
+  legend_none: 'weder 4G noch 5G',
+  bestHint: 'Der beste Netzbetreiber ist mit einem {star} markiert. Für Details mit der Maus über einen Netzbetreiber fahren.',
+  infoZone: 'Geprüfter Bereich',
+  zoneAddress: '<strong>Adresse</strong>: genau an diesem Punkt.',
+  zoneListing: '<strong>Angebot ohne genaue Adresse</strong>: im Umkreis von 1 bis 2 km.',
+  zoneCommune:
+    '<strong>Gemeinde</strong>: in Frankreich der Anteil der versorgten Einwohner an ihrem Wohnort (unbewohnte Gebiete zählen nicht); in Spanien im Ortszentrum.',
+  infoNotes: 'Gut zu wissen',
+  noteTheoretical: '<strong>Theoretische Abdeckung im Freien</strong>: in Gebäuden kann das Signal schwächer sein.',
+  note700: '„5G“ umfasst das 700-MHz-Band: große Reichweite, aber Geschwindigkeiten nahe an 4G.',
+  noteDigi: 'Spanien: Digi und virtuelle Anbieter nutzen das Netz eines der vier angezeigten Netzbetreiber.',
+  sourcesFr: 'Quellen: Frankreich',
+  srcFrCoverage: 'Abdeckung: Arcep, „Mon Réseau Mobile“{dates}.',
+  srcFrPopulation: 'Bevölkerung: Insee, Filosofi 2019 (200-m-Raster).',
+  srcFrMaps: 'Adressen und Grundkarte: IGN, Géoplateforme.',
+  sourcesEs: 'Quellen: Spanien',
+  srcEsCoverage: 'Abdeckung: Ministerium für digitale Transformation, „Mapa de servicios de banda ancha“{dates}.',
+  srcEsMaps: 'Adressen: CartoCiudad (IGN España). Grundkarte: OpenFreeMap, © OpenStreetMap.',
+  srcFooter: 'Offene Daten. Grenzen: © EuroGeographics. Unabhängige Erweiterung, nicht mit diesen Stellen oder den Netzbetreibern verbunden.',
+  dateAt: '{techno} Stand {date}',
+  datePublished: '{techno} veröffentlicht am {date}',
+  privacy: 'Datenschutz',
+  privacyText: 'Kein Konto, kein Tracking. Seiten werden nur auf Ihre Anfrage gelesen.',
+  privacyLink: 'Datenschutzerklärung',
+  settings: 'Einstellungen',
+  language: 'Sprache',
+  cardOption: 'Prüfung direkt auf Angebotsseiten anbieten',
+  version: 'Version {v}',
+
+  ad: 'Anzeige',
+  cardTitle: 'Mobilfunkempfang dieser Unterkunft prüfen?',
+  cardCheck: 'Prüfen',
+  cardNever: 'Nicht mehr anbieten',
+  cardClose: 'Schließen',
+  cardUpdated: 'Die Erweiterung wurde aktualisiert: Laden Sie die Seite neu, um diese Unterkunft zu prüfen.',
+  cardReady: 'Ergebnis bereit: Klicken Sie auf das orange Symbol der Erweiterung in der Adressleiste.',
+};
+
+const it: Messages = {
+  extName: 'Verifica copertura mobile',
+  extDescription: 'Copertura 4G e 5G degli operatori a qualsiasi indirizzo in Francia e Spagna, dalle mappe ufficiali. Senza account.',
+  menuSelection: 'Verifica la copertura mobile',
+  menuPage: 'Verifica il segnale di questo alloggio',
+
+  subtitle: '4G e 5G · dati pubblici',
+  infoButton: 'Info e fonti',
+  countriesAria: 'Paese della ricerca',
+  country_fr: 'Francia',
+  country_es: 'Spagna',
+  placeholder: 'Indirizzo o comune',
+  submit: 'Verifica',
+
+  welcomeTitle: 'Il tuo telefono avrà campo?',
+  welcomeLead: 'Il 4G e il 5G degli operatori, in Francia e in Spagna.',
+  stepType: 'Scrivi un indirizzo',
+  stepSelect: 'Oppure selezionalo in una pagina',
+  stepSelectHint: 'poi clic destro',
+  stepListing: 'Su un annuncio di alloggio',
+  stepListingHint: "clicca sull'icona arancione",
+  tryTitle: 'Prova',
+
+  searching: 'Ricerca di «{q}»…',
+  reading: 'Lettura della copertura a {place}…',
+  notFound: 'Indirizzo non trovato',
+  notFoundIn: 'Indirizzo non trovato ({country})',
+  notFoundHint: 'Prova ad aggiungere la città o il codice postale.',
+  searchIn: 'Cerca in: {country}',
+  which: 'Quale?',
+  searchFailed: 'Ricerca non riuscita',
+  checkConnection: 'Controlla la connessione.',
+  retry: 'Riprova',
+  coverageUnavailable: 'Copertura non disponibile',
+  serverNoResponse: 'Il server non risponde.',
+  serverUnreachable: 'Server non raggiungibile.',
+  retrySoon: 'Riprova tra poco.',
+
+  best: 'Migliore: {ops}',
+  bestBadge: 'il migliore qui',
+  allSame: 'Stessa copertura per tutti gli operatori.',
+  noNetworkHere: 'Né 4G né 5G qui.',
+  areaCommuneSurface: 'Quota di 5G su tutto il comune',
+  areaCommunePop: 'Quota di 5G tra i {n} abitanti del comune',
+  areaCircle: 'Quota di 5G entro {d}',
+  communeCenter: 'Copertura al centro del comune',
+  mapCaption: 'Mappa:',
+  fullMap: 'Apri la mappa completa',
+  sourceLine: 'Copertura teorica, fonte: {source}',
+  source_fr: 'Arcep',
+  source_es: 'ministero spagnolo per la Trasformazione digitale',
+  infoLink: 'Info',
+
+  status_5g: '5G',
+  status_5gPartial: '5G parziale · {pct}',
+  status_5gPartialShort: '5G parziale',
+  status_4g: '4G',
+  status_4gPartial: '4G parziale',
+  status_none: 'Nessun segnale',
+  detail: '5G: {d5} · 4G: {d4}',
+  covered: 'coperto',
+  notCovered: 'non coperto',
+  ofSurroundings: 'dei dintorni',
+  ofCommune: 'del comune',
+  ofInhabitants: 'degli abitanti',
+  noData: 'dati non disponibili',
+  level_TBC: 'Ottima',
+  level_BC: 'Buona',
+  level_CL: 'Limitata',
+  levelLong_TBC: 'copertura ottima',
+  levelLong_BC: 'copertura buona',
+  levelLong_CL: 'copertura limitata',
+
+  openListing: "Apri la pagina dell'alloggio",
+  thenClickIcon: "Poi clicca sull'icona arancione.",
+  noAddress: 'Nessun indirizzo trovato nella pagina',
+  noAddressHint: 'Selezionalo e fai clic destro, oppure scrivilo sopra.',
+  readOnPage: 'Letto nella pagina: {what}',
+  approxNote: "Il sito non pubblica l'indirizzo esatto",
+  communeOnly: 'Il sito pubblica solo il comune',
+  countryNotCovered: 'Paese non coperto',
+  coversCountries: "L'estensione copre la Francia e la Spagna.",
+
+  back: '← Indietro',
+  infoColors: 'I colori',
+  legend_5g: '5G in tutta la zona',
+  legend_5gPartial: 'il 5G su più della metà della zona (in %)',
+  legend_4g: 'niente 5G, o su meno della metà della zona',
+  legend_4gPartial: 'il 4G su meno della metà della zona',
+  legend_none: 'né 4G né 5G',
+  bestHint: "L'operatore migliore è segnato con una {star}. Passa il mouse su un operatore per i dettagli.",
+  infoZone: 'La zona valutata',
+  zoneAddress: '<strong>Indirizzo</strong>: nel punto esatto.',
+  zoneListing: '<strong>Annuncio senza indirizzo esatto</strong>: entro 1-2 km.',
+  zoneCommune:
+    "<strong>Comune</strong>: in Francia, quota di abitanti coperti dove vivono (le zone disabitate non contano); in Spagna, al centro del comune.",
+  infoNotes: 'Da sapere',
+  noteTheoretical: "Copertura <strong>teorica, all'aperto</strong>: al chiuso il segnale può essere più debole.",
+  note700: '«5G» include la banda 700 MHz: lunga portata, ma velocità vicine al 4G.',
+  noteDigi: 'Spagna: Digi e gli operatori virtuali usano la rete di uno dei quattro operatori mostrati.',
+  sourcesFr: 'Fonti: Francia',
+  srcFrCoverage: 'Copertura: Arcep, «Mon Réseau Mobile»{dates}.',
+  srcFrPopulation: 'Popolazione: Insee, Filosofi 2019 (griglia di 200 m).',
+  srcFrMaps: 'Indirizzi e mappa di base: IGN, Géoplateforme.',
+  sourcesEs: 'Fonti: Spagna',
+  srcEsCoverage: 'Copertura: ministero per la Trasformazione digitale, «Mapa de servicios de banda ancha»{dates}.',
+  srcEsMaps: 'Indirizzi: CartoCiudad (IGN España). Mappa di base: OpenFreeMap, © OpenStreetMap.',
+  srcFooter: 'Dati pubblici. Confini: © EuroGeographics. Estensione indipendente, non affiliata a questi enti né agli operatori.',
+  dateAt: '{techno} al {date}',
+  datePublished: '{techno} pubblicata il {date}',
+  privacy: 'Privacy',
+  privacyText: 'Nessun account, nessun tracciamento. Le pagine vengono lette solo su tua richiesta.',
+  privacyLink: 'Informativa sulla privacy',
+  settings: 'Impostazioni',
+  language: 'Lingua',
+  cardOption: 'Proponi la verifica direttamente nelle pagine degli annunci',
+  version: 'versione {v}',
+
+  ad: 'Pubblicità',
+  cardTitle: 'Verificare il segnale mobile di questo alloggio?',
+  cardCheck: 'Verifica',
+  cardNever: 'Non proporre più',
+  cardClose: 'Chiudi',
+  cardUpdated: "L'estensione è stata aggiornata: ricarica la pagina per verificare questo alloggio.",
+  cardReady: "Risultato pronto: clicca sull'icona arancione dell'estensione, nella barra degli indirizzi.",
+};
+
+const MESSAGES: Record<Lang, Messages> = { fr, en, es, de, it };
 
 /** Textes d'une langue (compilation : fichiers _locales du manifeste). */
 export const messagesFor = (l: Lang): Readonly<Messages> => MESSAGES[l];
-const LOCALES: Record<Lang, string> = { fr: 'fr-FR', en: 'en-GB', es: 'es-ES' };
+const LOCALES: Record<Lang, string> = { fr: 'fr-FR', en: 'en-GB', es: 'es-ES', de: 'de-DE', it: 'it-IT' };
 
 const isLang = (v: unknown): v is Lang => typeof v === 'string' && (LANGS as string[]).includes(v);
 
