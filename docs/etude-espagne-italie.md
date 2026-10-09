@@ -98,3 +98,41 @@ TIM, Vodafone (fusionné avec Fastweb, groupe Swisscom), WindTre (CK Hutchison),
 - Géocodeur par pays derrière la même interface (`geocode`, `suggestAddresses`).
 - Fond de carte OpenStreetMap hors de France.
 - Page Infos et politique de confidentialité : sources et destinataires par pays.
+
+## Portugal (vérifié en octobre 2026)
+
+- **Source** : ANACOM (régulateur), portail GEO.ANACOM, service ArcGIS public
+  `https://geo.anacom.pt/server/rest/services/publico/CoberturaQoS_Pub/MapServer`
+  (groupe « Rede Móvel »).
+- **Détail par opérateur : oui**, une couche raster par opérateur et techno :
+  DIGI, MEO, NOS, Vodafone × 2G (voix), 4G, 5G (« dados provisórios »).
+- **Valeur de chaque pixel = débit estimé** par classe : 4G ≥ 300, ≥ 100, ≥ 30, ≥ 2,
+  > 0 Mbit/s ; 5G jusqu'à ≥ 1 000 Mbit/s. Plus riche que l'Arcep (on pourrait
+  distinguer « 5G rapide » et « 5G lente »).
+- **Date** : 2e trimestre 2026, mise à jour trimestrielle.
+- Test (Lisbonne) : 4G et 5G chez les 4 opérateurs ; DIGI 4G ≥ 100, les autres ≥ 300 ;
+  5G ≥ 1 000 sauf DIGI ≥ 300.
+- Accès : interrogation d'un point possible (identify), accès depuis l'extension
+  autorisé (CORS). Pas de téléchargement complet trouvé : il faudrait reconstituer
+  les rasters par l'export d'images du service, ou demander les fichiers à ANACOM.
+- Licence : mention « © ANACOM », conditions de réutilisation à vérifier.
+- **Faisable avec le même verdict qu'en France**, et même un niveau de débit.
+
+## Suisse (vérifié en octobre 2026)
+
+- **Source** : OFCOM (Office fédéral de la communication), « Atlas du haut débit »,
+  couches `ch.bakom.mobilnetz-4g` et `ch.bakom.mobilnetz-5g` sur map.geo.admin.ch.
+- **Détail par opérateur : non** : pour chaque carré de 100 m, seulement le *nombre*
+  d'opérateurs (Salt, Sunrise, Swisscom) qui couvrent en extérieur. Même limite que l'Italie.
+- Date : 30 avril 2026. Téléchargement direct (GeoTIFF et ZIP) sur data.geo.admin.ch.
+- **Version possible : « 5G : 2 réseaux sur 3 »**, sans meilleur opérateur.
+
+## Bilan des pays étudiés
+
+| Pays | Par opérateur | Débit | Téléchargement | État |
+|---|---|---|---|---|
+| France | oui | niveaux (4G) | oui | en ligne |
+| Espagne | oui | 5G (champ VELOCIDAD) | par le service, 6 000 requêtes | construit |
+| Portugal | oui | oui, par classes | non (service seulement) | prochain candidat |
+| Italie | non (nombre) | non | sur demande | version allégée possible |
+| Suisse | non (nombre) | non | oui | version allégée possible |
