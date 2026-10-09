@@ -33,7 +33,7 @@ SECONDS=0
 # --- 1. Téléchargement.
 log "[es-$TECHNO] téléchargement${BBOX:+ (emprise $BBOX)}"
 src="$work/src.geojsons"
-"$PY" "$ES_DIR/download.py" "$TECHNO" "$src" "$out/es-$TECHNO.download.json" ${BBOX:+--bbox "$BBOX"}
+"$PY" "$ES_DIR/download.py" "$TECHNO" "$src" "$out/es-$TECHNO.download.json" ${BBOX:+"--bbox=$BBOX"}
 log "[es-$TECHNO] $(wc -l < "$src") zones, $(du -h "$src" | cut -f1) (étape terminée à ${SECONDS} s)"
 
 # --- 2. Zones à rasteriser, calées sur la grille source (pas et décalage mesurés au téléchargement).

@@ -16,6 +16,7 @@ from es_layers import DATASET, DATASET_URL, OPERATORS, PRODUCER, TECHNOS
 
 def main():
     tiles_dir = Path(sys.argv[1])
+    tiles_dir.mkdir(parents=True, exist_ok=True)
     layers = []
     for techno, t in TECHNOS.items():
         download = tiles_dir / f"es-{techno}.download.json"
