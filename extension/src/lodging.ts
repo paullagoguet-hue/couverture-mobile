@@ -59,7 +59,7 @@ export const LODGING_SITES: LodgingSite[] = [
   ...sites('Tripadvisor', ['tripadvisor.fr', 'tripadvisor.com', 'tripadvisor.be', 'tripadvisor.ch', 'tripadvisor.ca', 'tripadvisor.es', 'tripadvisor.pt'],
     ['/Hotel_Review-*', '/VacationRentalReview-*'], '^/(Hotel_Review|VacationRentalReview)-', 'schema', 'exact'),
   // Locations de vacances (adresse exacte communiquée après réservation)
-  ...sites('Airbnb', ['airbnb.fr', 'airbnb.com', 'airbnb.be', 'airbnb.ch', 'airbnb.ca', 'airbnb.es', 'airbnb.pt'], ['/rooms/*'], '^/rooms/', 'schema', 'approximate'),
+  ...sites('Airbnb', ['airbnb.fr', 'airbnb.com', 'airbnb.be', 'airbnb.ch', 'airbnb.ca', 'airbnb.es', 'airbnb.pt', 'airbnb.lu'], ['/rooms/*'], '^/rooms/', 'schema', 'approximate'),
   ...sites('Gîtes de France', ['gites-de-france.com'], ['/*/*/*/*'], '^/[a-z]{2}/[^/]+/[^/]+/[^/]+-\\d{2,3}[a-z]\\d+', 'map-attr', 'approximate', 'fr'),
   // Immobilier
   ...sites('Leboncoin', ['leboncoin.fr'], ['/ad/locations/*', '/ad/locations_gites/*', '/ad/ventes_immobilieres/*', '/ad/colocations/*'],

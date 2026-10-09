@@ -3,7 +3,7 @@
  *  - France : Géoplateforme de l'IGN (Base Adresse Nationale),
  *    https://data.geopf.fr/geocodage (l'ancienne API api-adresse.data.gouv.fr y redirige) ;
  *  - Espagne : CartoCiudad (IGN espagnol / CNIG), https://www.cartociudad.es/geocoder ;
- *  - Portugal, Belgique : Photon (données OpenStreetMap), hébergé par nos soins
+ *  - Portugal, Belgique, Luxembourg : Photon (données OpenStreetMap), hébergé par nos soins
  *    (cf. configureGeocoders) faute de géocodeur public national ouvert et sans
  *    clé ; réponses limitées au pays. Le serveur public photon.komoot.io ne
  *    convient pas à une extension (usage limité, blocage en cas de rafale).
@@ -58,6 +58,7 @@ export function geocode(text: string, options: GeocodeOptions = {}): Promise<Geo
       return geocodeEs(text, options);
     case 'pt':
     case 'be':
+    case 'lu':
       return geocodePhoton(text, options.country, options);
     default:
       return geocodeFr(text, options);
@@ -215,22 +216,17 @@ const significantWords = (text: string) =>
     .filter((w) => w.length >= 3 && !/^\d+$/.test(w) && !COMMON_WORDS.has(w));
 
 /** Emprise de chaque pays (Açores et Madère comprises) ; les réponses sont ensuite filtrées sur le pays. */
-const PHOTON_BBOX: Partial<Record<CountryCode, string>> = { pt: '-31.6,32.3,-6.1,42.2', be: '2.5,49.45,6.45,51.55' };
+const PHOTON_BBOX: Partial<Record<CountryCode, string>> = { pt: '-31.6,32.3,-6.1,42.2', be: '2.5,49.45,6.45,51.55', lu: '5.7,49.4,6.55,50.2' };
 
 /** Types Photon → types communs (ville = commune ; village, hameau… = lieu-dit). */
 const PT_TYPES: Record<string, ResultType> = { house: 'housenumber', street: 'street', city: 'municipality', town: 'municipality' };
 
-async function geocodePhoton(text: string, country: 'pt' | 'be', { limit = 5, signal, fetchFn = fetch }: GeocodeOptions): Promise<GeocodeResult[]> {
-  const q = normalizeQuery(text.replace(/,?\s*(Portugal|Belgique|Belgium|België|Belgie|Belgien)\s*$/i, ''));
+async function geocodePhoton(text: string, country: 'pt' | 'be' | 'lu', { limit = 5, signal, fetchFn = fetch }: GeocodeOptions): Promise<GeocodeResult[]> {
+  // Nom du pays en fin d'adresse retiré (« …, Portugal ») ; pas « Luxembourg », qui est aussi la capitale.
+  const q = normalizeQuery(text.replace(/,\s*(Portugal|Belgique|Belgium|België|Belgie|Belgien)\s*$/i, ''));
   if (!q) return [];
-  const url = new URL(photonUrl);
-  url.searchParams.set('q', q);
-  url.searchParams.set('limit', String(limit * 2)); // une partie peut tomber hors du Portugal
-  url.searchParams.set('lang', 'default'); // noms locaux
-  url.searchParams.set('bbox', PHOTON_BBOX[country]!);
-  const resp = await fetchFn(url, { signal });
-  if (!resp.ok) throw new Error(`Géocodage indisponible (${resp.status})`);
-  const json = await resp.json();
+  const fq = fold(q);
+
   // Photon renvoie toujours quelque chose, même sans rapport (« Bonneval-sur-Arc »
   // cherché en Belgique -> une rue de Charleroi, ou de Stoumont via « arc ») : on
   // exige le mot le plus long de la recherche, ou au moins deux mots significatifs.
@@ -242,12 +238,37 @@ async function geocodePhoton(text: string, country: 'pt' | 'be', { limit = 5, si
     const found = new Set(significantWords([p.name, p.street, p.city, p.town, p.village, p.county, p.district, p.locality].filter(Boolean).join(' ')));
     return found.has(longest) || wanted.filter((w) => found.has(w)).length >= 2;
   };
-  const features: any[] = (json.features ?? []).filter((f: any) => f.properties?.countrycode === country.toUpperCase() && related(f));
-  // Adresse avec numéro : un résultat « maison » d'abord, s'il y en a un.
-  if (/\d/.test(q)) {
-    const house = features.findIndex((f) => f.properties.type === 'house');
-    if (house > 0) features.unshift(...features.splice(house, 1));
+  /** Le résultat est-il dans la commune écrite ? (Pour une ville, son propre nom.) */
+  const inTown = (f: any) => {
+    const p = f.properties;
+    const isPlace = !['house', 'street'].includes(p.type);
+    return [p.city, p.town, p.village, isPlace ? p.name : undefined].some((name) => nameInText(name, fq));
+  };
+
+  const search = async (query: string): Promise<any[]> => {
+    const url = new URL(photonUrl);
+    url.searchParams.set('q', query);
+    url.searchParams.set('limit', String(limit * 2)); // une partie peut tomber hors du pays
+    url.searchParams.set('lang', 'default'); // noms locaux
+    url.searchParams.set('bbox', PHOTON_BBOX[country]!);
+    const resp = await fetchFn(url, { signal });
+    if (!resp.ok) throw new Error(`Géocodage indisponible (${resp.status})`);
+    const json = await resp.json();
+    return (json.features ?? []).filter((f: any) => f.properties?.countrycode === country.toUpperCase() && related(f));
+  };
+
+  let features = await search(q);
+  // Numéro absent d'OpenStreetMap dans la commune écrite : Photon préfère ce numéro
+  // ailleurs (« Avenue de la Gare 1, Esch-sur-Alzette » -> Lamadelaine). Mieux vaut
+  // la rue dans la bonne commune : nouvel essai sans le numéro.
+  if (/\d/.test(q) && q.includes(',') && !features.some(inTown)) {
+    const retry = await search(q.replace(/\b\d+[a-z]?\b/gi, '').replace(/\s+/g, ' ').replace(/\s+,/g, ','));
+    if (retry.some(inTown)) features = retry;
   }
+  // En tête : les résultats dans la commune écrite, puis, pour une adresse avec numéro, les « maisons ».
+  const rank = (f: any) => (inTown(f) ? 0 : 2) + (/\d/.test(q) && f.properties.type !== 'house' ? 1 : 0);
+  features.sort((a, b) => rank(a) - rank(b)); // tri stable : l'ordre de Photon départage
+
   return features.slice(0, limit).map((f, i) => {
     const p = f.properties;
     const town = p.city ?? p.town ?? p.village ?? p.county ?? '';
@@ -320,7 +341,7 @@ export async function suggestAddresses(
   { limit = 5, country = 'fr', signal, fetchFn = fetch }: Omit<GeocodeOptions, 'autocomplete'> = {},
 ): Promise<GeocodeResult[]> {
   if (country === 'es') return geocodeEs(text, { limit, signal, fetchFn });
-  if (country === 'pt' || country === 'be') return geocodePhoton(text, country, { limit, signal, fetchFn });
+  if (country === 'pt' || country === 'be' || country === 'lu') return geocodePhoton(text, country, { limit, signal, fetchFn });
   const q = normalizeQuery(text);
   if (!q) return [];
   const words = q.split(' ');

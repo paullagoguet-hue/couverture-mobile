@@ -14,8 +14,9 @@ Prérequis : Java 21 (Windows : `winget install EclipseAdoptium.Temurin.21.JRE`)
 mkdir photon && cd photon
 curl -LO https://github.com/komoot/photon/releases/download/1.3.0/photon-1.3.0.jar
 curl -L -o belgium.jsonl.zst https://download1.graphhopper.com/public/europe/belgium/photon-dump-belgium-1.0-latest.jsonl.zst
+curl -L -o luxembourg.jsonl.zst https://download1.graphhopper.com/public/europe/luxemburg/photon-dump-luxemburg-1.0-latest.jsonl.zst
 curl -L -o portugal.jsonl.zst https://download1.graphhopper.com/public/europe/portugal/photon-dump-portugal-1.0-latest.jsonl.zst
-node ../geocoder/merge-dumps.mjs belgium.jsonl.zst portugal.jsonl.zst | java -Xmx6g -jar photon-1.3.0.jar import -import-file - -data-dir ./data -j 4 -languages fr,en,es,de,it,pt,nl
+node ../geocoder/merge-dumps.mjs belgium.jsonl.zst luxembourg.jsonl.zst portugal.jsonl.zst | java -Xmx6g -jar photon-1.3.0.jar import -import-file - -data-dir ./data -j 4 -languages fr,en,es,de,it,pt,nl
 java -Xmx4g -jar photon-1.3.0.jar serve -data-dir ./data -cors-any -listen-ip 127.0.0.1 -listen-port 2322
 ```
 

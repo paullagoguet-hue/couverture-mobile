@@ -5,7 +5,7 @@
  */
 import { BORDERS } from './borders.ts';
 
-export type CountryCode = 'fr' | 'es' | 'pt' | 'be';
+export type CountryCode = 'fr' | 'es' | 'pt' | 'be' | 'lu';
 
 export interface Country {
   code: CountryCode;
@@ -19,6 +19,7 @@ export const COUNTRIES: Record<CountryCode, Country> = {
   es: { code: 'es', label: 'Espagne', path: 'es/' },
   pt: { code: 'pt', label: 'Portugal', path: 'pt/' },
   be: { code: 'be', label: 'Belgique', path: 'be/' },
+  lu: { code: 'lu', label: 'Luxembourg', path: 'lu/' },
 };
 
 export const COUNTRY_CODES = Object.keys(COUNTRIES) as CountryCode[];
@@ -26,7 +27,7 @@ export const COUNTRY_CODES = Object.keys(COUNTRIES) as CountryCode[];
 export const isCountryCode = (c: unknown): c is CountryCode => typeof c === 'string' && c in COUNTRIES;
 
 /** Codes ISO (2 et 3 lettres) et débuts de noms (français, anglais, espagnol, catalan). */
-const ISO_CODES: Record<string, CountryCode> = { fr: 'fr', fra: 'fr', es: 'es', esp: 'es', pt: 'pt', prt: 'pt', be: 'be', bel: 'be' };
+const ISO_CODES: Record<string, CountryCode> = { fr: 'fr', fra: 'fr', es: 'es', esp: 'es', pt: 'pt', prt: 'pt', be: 'be', bel: 'be', lu: 'lu', lux: 'lu' };
 const NAME_PREFIXES: [string, CountryCode][] = [
   ['france', 'fr'],
   ['francia', 'fr'],
@@ -39,6 +40,8 @@ const NAME_PREFIXES: [string, CountryCode][] = [
   ['belgium', 'be'],
   ['belgie', 'be'],
   ['belgien', 'be'],
+  ['luxembourg', 'lu'],
+  ['luxemburg', 'lu'],
 ];
 
 /**
@@ -90,7 +93,7 @@ function distanceKm(ring: number[][], x: number, y: number): number {
 }
 
 /** Espagne avant France (enclave de Llívia, cf. countryAt). */
-const SEARCH_ORDER: CountryCode[] = ['es', 'fr', 'pt', 'be'];
+const SEARCH_ORDER: CountryCode[] = ['es', 'fr', 'pt', 'be', 'lu'];
 
 /** Au-delà, un point hors des contours n'est rattaché à aucun pays (pleine mer). */
 const COAST_TOLERANCE_KM = 5;

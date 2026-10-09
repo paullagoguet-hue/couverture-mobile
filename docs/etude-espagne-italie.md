@@ -159,3 +159,13 @@ Géocodage : Photon public (komoot) saturé par nos tests (blocage temporaire de
 l'adresse IP) : pour la production, un géocodeur Photon auto-hébergé (données
 OpenStreetMap du monde entier) remplacera Photon public, et pourra servir tous
 les pays sans géocodeur national ouvert.
+
+### Deuxième tour (octobre 2026)
+
+| Pays | Données par opérateur | État | Raison |
+|---|---|---|---|
+| Luxembourg | oui, carrés de 100 m (ILR, CC BY) | **construit** | liste des opérateurs par carré + grille du cadastre (CC0) |
+| Tchéquie | oui (ČTÚ, VPortal, téléchargeable) | en attente | conditions d'utilisation : usage personnel seulement sans accord de la ČTÚ |
+| Slovénie | cartes calculées (AKOS) | abandonné | portail protégé contre l'accès automatisé |
+| Autriche | collectées par la RTR | abandonné | portail réservé aux opérateurs, rien de public par opérateur |
+| Norvège, Danemark, Finlande, Croatie | non trouvé | abandonné pour l'instant | statistiques ou mesures seulement, pas de carte par opérateur téléchargeable |

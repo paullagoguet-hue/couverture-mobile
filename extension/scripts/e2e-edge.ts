@@ -66,6 +66,13 @@ const CASES: Case[] = [
     query: `page=${JSON.stringify({ name: 'Appartement', address: 'Bruxelles', lat: 50.8467, lng: 4.3525, precision: 'approximate', radiusM: 1000 })}`,
     expect: { titre: 'Bruxelles', note: /1 km/, fromPage: true },
   },
+  { name: 'Luxembourg : adresse (pays choisi)', query: 'pays=lu&q=Place Guillaume II, Luxembourg', expect: { titre: 'Place Guillaume II' } },
+  { name: 'Luxembourg : clic droit sur un site .lu', query: 'q=Avenue de la Gare 1, Esch-sur-Alzette&url=https://www.athome.lu/annonce/1', expect: { titre: 'Esch' } },
+  {
+    name: 'Luxembourg : annonce avec coordonnées',
+    query: `page=${JSON.stringify({ name: 'Appartement', address: 'Luxembourg', lat: 49.6116, lng: 6.1319, precision: 'approximate', radiusM: 1000 })}`,
+    expect: { titre: 'Luxembourg', note: /1 km/, fromPage: true },
+  },
   { name: 'Anglais : commune', query: 'lang=en&q=Bonneval-sur-Arc', expect: { titre: 'Bonneval-sur-Arc', note: /250 residents/ } },
   {
     name: 'Espagnol : annonce à Madrid',

@@ -81,6 +81,7 @@ const PRODUCERS: Record<CountryCode, string> = {
   es: 'Ministerio para la Transformación Digital',
   pt: 'ANACOM',
   be: 'IBPT-BIPT',
+  lu: 'ILR',
 };
 
 const readers = new Map<CountryCode, CoverageReader>();
@@ -209,6 +210,7 @@ const EXAMPLES: [string, CountryCode][] = [
   ['Calle Mayor 1, Madrid', 'es'],
   ['Rua Augusta 100, Lisboa', 'pt'],
   ['Rue Neuve 1, Bruxelles', 'be'],
+  ['Place Guillaume II, Luxembourg', 'lu'],
 ];
 
 /** Accueil : explication, trois façons de vérifier, exemples. */

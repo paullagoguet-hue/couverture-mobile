@@ -43,8 +43,8 @@ export class InfoPage {
     window.scrollTo(0, 0);
     // Dates des données : depuis les manifestes (déjà en cache après une recherche).
     // Hors ligne, la page s'affiche sans les dates.
-    const [fr, es, pt, be] = await Promise.all((['fr', 'es', 'pt', 'be'] as const).map((c) => this.getManifest(c).catch(() => undefined)));
-    if (this.visible) this.content.innerHTML = this.render({ fr, es, pt, be });
+    const [fr, es, pt, be, lu] = await Promise.all((['fr', 'es', 'pt', 'be', 'lu'] as const).map((c) => this.getManifest(c).catch(() => undefined)));
+    if (this.visible) this.content.innerHTML = this.render({ fr, es, pt, be, lu });
   }
 
   hide() {
@@ -107,6 +107,11 @@ export class InfoPage {
         <h3 class="next">${t('sourcesFor', { country: regionName('be') })}</h3>
         <ul class="facts">
           <li>${t('srcCoverage', { source: 'IBPT-BIPT, « Atlas mobile »', dates: '' })}</li>
+          <li>${t('srcAddressesMaps', { geocoder: 'Photon, © OpenStreetMap', basemap: 'OpenFreeMap, © OpenStreetMap' })}</li>
+        </ul>
+        <h3 class="next">${t('sourcesFor', { country: regionName('lu') })}</h3>
+        <ul class="facts">
+          <li>${t('srcCoverage', { source: 'ILR, « Relevé géographique des réseaux »', dates: dates(manifests.lu, 'dateAt') })}</li>
           <li>${t('srcAddressesMaps', { geocoder: 'Photon, © OpenStreetMap', basemap: 'OpenFreeMap, © OpenStreetMap' })}</li>
         </ul>
         <p class="hint">${t('srcFooter')}</p>

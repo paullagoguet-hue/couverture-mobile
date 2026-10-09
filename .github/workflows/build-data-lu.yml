@@ -1,5 +1,5 @@
 # Construit les tuiles PMTiles de couverture mobile pour le Luxembourg, à partir
-# de l'relevé géographique de l'ILR (cf. data-pipeline/lu/build_lu.sh).
+# du relevé géographique de l'ILR (cf. data-pipeline/lu/build_lu.sh).
 #
 # Lancement manuel : onglet Actions > « Données de couverture (Luxembourg) » > Run workflow.
 name: Données de couverture (Luxembourg)

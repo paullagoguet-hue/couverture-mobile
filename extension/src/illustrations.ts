@@ -68,6 +68,7 @@ export const ICONS = {
 
 /** Drapeaux simplifiés (les émojis drapeaux ne s'affichent pas sous Windows). */
 export const FLAGS: Record<CountryCode, string> = {
+  lu: `<svg class="flag-icon" viewBox="0 0 18 12" aria-hidden="true"><rect width="18" height="12" fill="#ed2939"/><rect y="4" width="18" height="4" fill="#fff"/><rect y="8" width="18" height="4" fill="#00a1de"/><rect width="18" height="12" rx="1.5" fill="none" stroke="rgba(0,0,0,.15)"/></svg>`,
   be: `<svg class="flag-icon" viewBox="0 0 18 12" aria-hidden="true"><rect width="6" height="12" fill="#1a1a1a"/><rect x="6" width="6" height="12" fill="#fdda24"/><rect x="12" width="6" height="12" fill="#ef3340"/><rect width="18" height="12" rx="1.5" fill="none" stroke="rgba(0,0,0,.15)"/></svg>`,
   fr: `<svg class="flag-icon" viewBox="0 0 18 12" aria-hidden="true"><rect width="6" height="12" fill="#0055a4"/><rect x="6" width="6" height="12" fill="#fff"/><rect x="12" width="6" height="12" fill="#ef4135"/><rect width="18" height="12" rx="1.5" fill="none" stroke="rgba(0,0,0,.15)"/></svg>`,
   pt: `<svg class="flag-icon" viewBox="0 0 18 12" aria-hidden="true"><rect width="18" height="12" fill="#da291c"/><rect width="7.2" height="12" fill="#046a38"/><circle cx="7.2" cy="6" r="2.3" fill="#ffe900" stroke="#da291c" stroke-width=".6"/><rect width="18" height="12" rx="1.5" fill="none" stroke="rgba(0,0,0,.15)"/></svg>`,
