@@ -5,7 +5,7 @@
  */
 import { BORDERS } from './borders.ts';
 
-export type CountryCode = 'fr' | 'es';
+export type CountryCode = 'fr' | 'es' | 'pt';
 
 export interface Country {
   code: CountryCode;
@@ -17,6 +17,7 @@ export interface Country {
 export const COUNTRIES: Record<CountryCode, Country> = {
   fr: { code: 'fr', label: 'France', path: '' },
   es: { code: 'es', label: 'Espagne', path: 'es/' },
+  pt: { code: 'pt', label: 'Portugal', path: 'pt/' },
 };
 
 export const COUNTRY_CODES = Object.keys(COUNTRIES) as CountryCode[];
@@ -24,7 +25,7 @@ export const COUNTRY_CODES = Object.keys(COUNTRIES) as CountryCode[];
 export const isCountryCode = (c: unknown): c is CountryCode => typeof c === 'string' && c in COUNTRIES;
 
 /** Codes ISO (2 et 3 lettres) et débuts de noms (français, anglais, espagnol, catalan). */
-const ISO_CODES: Record<string, CountryCode> = { fr: 'fr', fra: 'fr', es: 'es', esp: 'es' };
+const ISO_CODES: Record<string, CountryCode> = { fr: 'fr', fra: 'fr', es: 'es', esp: 'es', pt: 'pt', prt: 'pt' };
 const NAME_PREFIXES: [string, CountryCode][] = [
   ['france', 'fr'],
   ['francia', 'fr'],
@@ -32,6 +33,7 @@ const NAME_PREFIXES: [string, CountryCode][] = [
   ['spain', 'es'],
   ['espana', 'es'],
   ['espanya', 'es'],
+  ['portugal', 'pt'],
 ];
 
 /**
@@ -76,6 +78,9 @@ function distanceKm(ring: number[][], x: number, y: number): number {
   return best;
 }
 
+/** Espagne avant France (enclave de Llívia, cf. countryAt). */
+const SEARCH_ORDER: CountryCode[] = ['es', 'fr', 'pt'];
+
 /** Au-delà, un point hors des contours n'est rattaché à aucun pays (pleine mer). */
 const COAST_TOLERANCE_KM = 5;
 
@@ -89,12 +94,12 @@ const COAST_TOLERANCE_KM = 5;
  */
 export function countryAt(lng: number, lat: number): CountryCode | null {
   if (BORDERS.ad?.some((ring) => inRing(ring, lng, lat))) return null;
-  for (const code of ['es', 'fr'] as const) {
+  for (const code of SEARCH_ORDER) {
     if (BORDERS[code]?.some((ring) => inRing(ring, lng, lat))) return code;
   }
   let nearest: CountryCode | null = null;
   let best = COAST_TOLERANCE_KM;
-  for (const code of ['es', 'fr'] as const) {
+  for (const code of SEARCH_ORDER) {
     for (const ring of BORDERS[code] ?? []) {
       const d = distanceKm(ring, lng, lat);
       if (d < best) (best = d), (nearest = code);

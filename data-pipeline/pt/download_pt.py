@@ -7,7 +7,7 @@ retraduit chaque couleur en classe de débit (cf. CLASSES). Une couleur
 inconnue arrête le traitement (le service aurait changé de légende).
 
     python3 download_pt.py meo 5g out_dir stats.json
-    python3 download_pt.py meo 5g out_dir stats.json --bbox=-20000,-110000,20000,-70000   # essai (EPSG:3763)
+    python3 download_pt.py meo 5g out_dir stats.json --bbox=-100000,-115000,-75000,-95000   # essai (EPSG:3763)
 
 Produit <out_dir>/<région>.tif : Byte, 0 = pas de couverture, 1..6 = classe.
 """

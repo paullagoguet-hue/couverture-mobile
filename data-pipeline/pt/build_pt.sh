@@ -2,7 +2,7 @@
 # Construit les PMTiles portugais d'UNE techno (4g ou 5g), un fichier par opérateur.
 #
 #   ./build_pt.sh 5g
-#   BBOX=-20000,-110000,20000,-70000 ./build_pt.sh 5g     # essai (Lisbonne, EPSG:3763)
+#   BBOX=-100000,-115000,-75000,-95000 ./build_pt.sh 5g     # essai (Lisbonne, EPSG:3763)
 #
 # Étapes, par opérateur (en parallèle) : reconstitution du raster à partir des
 # images du service (download_pt.py) -> polygones par classe de débit
@@ -19,7 +19,8 @@ BBOX=${BBOX:-}
 MIN_ZOOM=${MIN_ZOOM:-8}
 MAX_ZOOM=${MAX_ZOOM:-12}
 KEEP_WORK=${KEEP_WORK:-0}
-TIPPECANOE_OPTS=${TIPPECANOE_OPTS:---no-simplification-of-shared-nodes --drop-smallest-as-needed}
+# --simplify-only-low-zooms : contours exacts au zoom max (classes de débit voisines tous les 100 m).
+TIPPECANOE_OPTS=${TIPPECANOE_OPTS:---no-simplification-of-shared-nodes --simplify-only-low-zooms --drop-smallest-as-needed}
 OPERATORS=(meo nos vodafone digi)
 
 work="$WORK_DIR/pt-$TECHNO"

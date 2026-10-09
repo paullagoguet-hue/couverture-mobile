@@ -13,7 +13,7 @@ on:
         required: false
         default: "4g 5g"
       bbox:
-        description: "Essai sur une zone : xmin,ymin,xmax,ymax en EPSG:3763, ex. -20000,-110000,20000,-70000 (Lisbonne) ; vide = tout le pays"
+        description: "Essai sur une zone : xmin,ymin,xmax,ymax en EPSG:3763, ex. -100000,-115000,-75000,-95000 (Lisbonne) ; vide = tout le pays"
         required: false
         default: ""
       min_zoom:
