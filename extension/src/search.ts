@@ -6,7 +6,7 @@
  * de couverture au lieu choisi ; Entrée lance une recherche sur le texte saisi.
  * Clavier : ↓/↑ parcourent les suggestions, Échap les ferme.
  */
-import { geocode, normalizeQuery, type GeocodeResult } from '@couverture/core';
+import { normalizeQuery, suggestAddresses, type GeocodeResult } from '@couverture/core';
 
 const DEBOUNCE_MS = 250;
 
@@ -79,7 +79,7 @@ export class SearchBox {
     if (!normalizeQuery(text)) return this.close();
     const ctrl = (this.pending = new AbortController());
     try {
-      this.results = await geocode(text, { limit: 5, autocomplete: true, signal: ctrl.signal });
+      this.results = await suggestAddresses(text, { limit: 5, signal: ctrl.signal });
     } catch {
       return; // saisie suivante ou réseau indisponible : la recherche par Entrée affichera l'erreur
     }

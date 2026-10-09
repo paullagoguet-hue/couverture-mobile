@@ -84,3 +84,41 @@ export function cleanAddress(text: string): string {
     .filter(Boolean)
     .join(', ');
 }
+
+/** Minuscules sans accents, pour comparer des débuts de mots. */
+const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/**
+ * Suggestions pendant la saisie. Le géocodeur gère mal un dernier mot tronqué
+ * (« 12 place bellecour ly » → Égreville au lieu de Lyon) : quand le dernier
+ * mot fait 3 lettres ou moins, on cherche aussi sans lui, et on fait remonter
+ * les lieux dont un mot commence par ces lettres (« ly » → Lyon).
+ */
+export async function suggestAddresses(
+  text: string,
+  { limit = 5, signal, fetchFn = fetch }: { limit?: number; signal?: AbortSignal; fetchFn?: typeof fetch } = {},
+): Promise<GeocodeResult[]> {
+  const q = normalizeQuery(text);
+  if (!q) return [];
+  const words = q.split(' ');
+  const partial = words.length > 1 ? words[words.length - 1] : '';
+  const withoutPartial = words.slice(0, -1).join(' ');
+  const truncated = /^\p{L}{1,3}$/u.test(partial) && normalizeQuery(withoutPartial);
+
+  const [full, rest] = await Promise.all([
+    geocode(q, { limit, autocomplete: true, signal, fetchFn }),
+    truncated ? geocode(withoutPartial, { limit: 10, autocomplete: true, signal, fetchFn }) : Promise.resolve([]),
+  ]);
+  const prefix = fold(partial);
+  const boosted = rest
+    .filter((r) => fold(`${r.label} ${r.context}`).split(/[\s,'-]+/).some((w) => w.startsWith(prefix)))
+    .map((r) => ({ ...r, score: r.score + 0.2 }));
+
+  // Fusion sans doublons, meilleur score d'abord.
+  const byLabel = new Map<string, GeocodeResult>();
+  for (const r of [...full, ...boosted]) {
+    const prev = byLabel.get(r.label);
+    if (!prev || r.score > prev.score) byLabel.set(r.label, r);
+  }
+  return [...byLabel.values()].sort((a, b) => b.score - a.score).slice(0, limit);
+}

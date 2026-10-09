@@ -1,7 +1,7 @@
 {
   "name": "@couverture/extension",
   "private": true,
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Extension navigateur « Vérifier la couverture réseau » (Chrome/Edge et Firefox, Manifest V3)",
   "type": "module",
   "scripts": {
@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "icons": "node scripts/make-icons.ts",
     "test:e2e": "node scripts/e2e-edge.ts",
-    "lint:firefox": "web-ext lint --source-dir dist/firefox"
+    "lint:firefox": "web-ext lint --source-dir dist/firefox",
+    "captures": "node scripts/captures.ts"
   },
   "devDependencies": {
     "@types/chrome": "^0.3.4",
