@@ -97,7 +97,16 @@
       .note { margin-top: 10px; }
       footer { margin-top: 16px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; color: var(--muted); font-size: 11px; }
       #version { margin-left: auto; }
-      #card-enable { padding: 0; border: none; background: none; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; text-align: left; }
+      .card-option { display: flex; gap: 6px; align-items: flex-start; cursor: pointer; }
+      .card-option input { margin: 1px 0 0; }
+
+      /* Encart publicitaire (sous le résultat) */
+      .encart { margin-top: 14px; padding: 8px 10px 10px; border: 1px dashed var(--border); border-radius: 6px; background: #fafbfb; }
+      .encart-mention { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 4px; }
+      .encart a { display: flex; gap: 10px; align-items: center; color: inherit; text-decoration: none; font-size: 13px; }
+      .encart a:hover strong, .encart a:focus strong { text-decoration: underline; }
+      .encart img { width: 56px; height: 56px; object-fit: contain; border-radius: 4px; flex: none; }
+      .encart strong { display: block; color: var(--accent); }
     </style>
   </head>
   <body>
@@ -114,7 +123,7 @@
         et choisissez « Vérifier la couverture réseau ».</p>
     </div>
     <footer>
-      <button id="card-enable" type="button" hidden>Réafficher la proposition sur les pages d'hébergement</button>
+      <label class="card-option" hidden><input id="card-enabled" type="checkbox" />Proposer la vérification sur les pages d'annonces de logement</label>
       <span id="version"></span>
     </footer>
     <script type="module" src="./src/panel.ts"></script>

@@ -25,8 +25,9 @@ import {
 } from '@couverture/core';
 
 import { api, PENDING_KEY, type PendingQuery } from './browser.ts';
-import { CARD_DISABLED_KEY } from './messages.ts';
+import { CARD_ENABLED_KEY } from './messages.ts';
 import { DISCLAIMER, SITE_URL, TILES_BASE_URL } from './config.ts';
+import { fillEncart } from './encart.ts';
 import { MiniMap } from './minimap.ts';
 import { SearchBox } from './search.ts';
 
@@ -192,9 +193,12 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
     <p class="note">Un verdict « 5G » ne garantit pas le très haut débit : l'Arcep ne distingue pas la bande 700 MHz
       (longue portée, débit proche de la 4G) de la bande 3,5 GHz (rapide, faible portée). Le détail par niveau s'affiche au survol.</p>
     <p class="source">${DISCLAIMER} (données ${dates}).</p>
-    <p><a id="full-map" target="_blank" rel="noopener">Voir sur la carte complète</a></p>`);
+    <p><a id="full-map" target="_blank" rel="noopener">Voir sur la carte complète</a></p>
+    <div id="encart-slot"></div>`);
 
   const miniMap = attachMiniMap(document.getElementById('minimap-slot')!);
+  // Publicité éventuelle : sous le résultat, jamais avant, sans effet sur le classement.
+  void fillEncart(document.getElementById('encart-slot')!);
 
   // Opérateur sélectionné = couche de son verdict (5G ou 4G) sur la mini-carte et la carte complète.
   const select = (layerId: string) => {
@@ -316,12 +320,13 @@ if (testQuery) {
 // Version affichée en bas du panneau : permet de vérifier que la bonne version est chargée.
 document.getElementById('version')!.textContent = `version ${api?.runtime.getManifest().version ?? 'test'}`;
 
-// « Ne plus proposer » choisi sur la carte : lien pour la réactiver.
+// Proposition de vérification sur les pages d'annonces : désactivée par défaut,
+// activée par l'utilisateur ici (et désactivable depuis l'encadré).
 if (api) {
-  const enable = document.getElementById('card-enable') as HTMLButtonElement;
-  const refresh = () =>
-    api.storage.local.get(CARD_DISABLED_KEY).then((s) => (enable.hidden = !s[CARD_DISABLED_KEY]));
-  enable.addEventListener('click', () => api.storage.local.remove(CARD_DISABLED_KEY).then(refresh));
+  const toggle = document.getElementById('card-enabled') as HTMLInputElement;
+  toggle.closest('label')!.hidden = false;
+  const refresh = () => api.storage.local.get(CARD_ENABLED_KEY).then((s) => (toggle.checked = s[CARD_ENABLED_KEY] === true));
+  toggle.addEventListener('change', () => void api.storage.local.set({ [CARD_ENABLED_KEY]: toggle.checked }));
   api.storage.local.onChanged.addListener(refresh);
   void refresh();
 }

@@ -28,17 +28,19 @@ try {
   for (const c of CASES) {
     const page = await browser.open(`panel.html?${c.query.replace(/ /g, '%20')}`);
     await sleep(7000);
-    const r = await page.evaluate<{ titre: string; verdicts: string[]; carte: boolean; note: string | null }>(`({
+    const r = await page.evaluate<{ titre: string; verdicts: string[]; carte: boolean; note: string | null; encart: string | null }>(`({
       titre: document.querySelector('h2')?.innerText ?? document.querySelector('#result')?.innerText.slice(0, 80),
       verdicts: [...document.querySelectorAll('.coverage tbody tr')].map((tr) => tr.innerText.replace(/\\s+/g, ' ').trim()),
       carte: !!document.querySelector('#minimap canvas'),
       note: document.querySelector('.area-note')?.innerText ?? null,
+      encart: document.querySelector('.encart')?.innerText.replace(/\\s+/g, ' ') ?? null,
     })`);
     const ok = !page.problems.length && (!r.verdicts.length || r.carte);
     if (!ok) failures++;
     console.log(`${ok ? '✓' : '✗'} ${c.name} — ${r.titre}`);
     for (const v of r.verdicts) console.log(`    ${v}`);
     if (r.note) console.log(`    note : ${r.note}`);
+    if (r.encart) console.log(`    encart : ${r.encart}`);
     if (r.verdicts.length) console.log(`    mini-carte : ${r.carte ? 'affichée' : 'ABSENTE'}`);
     for (const p of page.problems) console.log(`    ⚠ ${p}`);
     await page.close();

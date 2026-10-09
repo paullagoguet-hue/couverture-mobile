@@ -12,3 +12,9 @@ export const SITE_URL: string = import.meta.env.VITE_SITE_URL ?? 'http://127.0.0
 
 /** Mention obligatoire affichée avec chaque résultat. */
 export const DISCLAIMER = 'Couverture théorique extérieure, source Arcep';
+
+/**
+ * Encart publicitaire facultatif (cf. encart.ts), publié à côté des tuiles :
+ * même serveur, donc déjà autorisé par la CSP. Fichier absent = pas d'encart.
+ */
+export const ENCART_URL: string = new URL('encart.json', TILES_BASE_URL).href;

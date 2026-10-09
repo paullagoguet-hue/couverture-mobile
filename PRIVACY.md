@@ -6,7 +6,7 @@
 L'extension « Vérifier la couverture réseau » affiche la couverture mobile
 théorique (données publiques de l'Arcep) à une adresse. Elle n'a pas de
 compte utilisateur, ne dépose pas de cookie, n'utilise aucun outil de mesure
-d'audience et ne vend ni ne partage aucune donnée à des fins commerciales.
+d'audience ni de pistage publicitaire, et ne vend ni ne partage aucune donnée.
 
 ## Ce que l'extension lit, et quand
 
@@ -17,12 +17,13 @@ dans les cas suivants, **toujours à la suite d'une action de votre part** :
 |---|---|
 | Vous sélectionnez un texte puis choisissez « Vérifier la couverture réseau » dans le menu du clic droit | Le texte sélectionné |
 | Vous tapez une adresse dans le panneau de l'extension | Le texte saisi |
-| Sur la page d'une annonce de logement d'un site pris en charge, vous cliquez sur « Vérifier » (encadré proposé par l'extension), sur l'icône de l'extension ou sur l'entrée du clic droit | La localisation de l'annonce publiée par la page (adresse ou coordonnées), et rien d'autre |
+| Sur la page d'une annonce de logement d'un site pris en charge, vous cliquez sur l'icône de l'extension, sur l'entrée du clic droit ou sur « Vérifier » (encadré proposé par l'extension si vous l'avez activé) | La localisation de l'annonce publiée par la page (adresse ou coordonnées), et rien d'autre |
 
-Sur les pages d'annonces des sites pris en charge, l'extension affiche un
+**Si vous l'activez dans le panneau** (option désactivée par défaut),
+l'extension affiche sur les pages d'annonces des sites pris en charge un
 encadré proposant la vérification. **Tant que vous ne cliquez pas sur
 « Vérifier », rien n'est lu dans la page.** L'encadré peut être fermé ou
-désactivé définitivement (« Ne plus proposer »).
+désactivé à tout moment (« Ne plus proposer », ou depuis le panneau).
 
 L'extension ne lit ni votre historique de navigation, ni vos formulaires, ni
 vos identifiants, ni le contenu des autres pages.
@@ -34,6 +35,8 @@ vos identifiants, ni le contenu des autres pages.
 | Texte sélectionné, adresse saisie ou adresse lue sur la page | Service de géocodage de la Géoplateforme de l'IGN (`data.geopf.fr`) | Convertir l'adresse en position sur la carte |
 | Requêtes de fond de carte (zone affichée) | Géoplateforme de l'IGN (`data.geopf.fr`) | Afficher la mini-carte |
 | Requêtes de tuiles de couverture (zone autour de l'adresse) | Hébergement des données de couverture : [domaine à compléter] | Lire la couverture à cet endroit |
+| Demande du contenu de l'encart publicitaire éventuel (texte et image), sans l'adresse recherchée | Même hébergement | Afficher l'encart sous le résultat |
+| Aucune donnée : seule l'ouverture du lien de l'encart, **si vous cliquez dessus** | Annonceur | Visite de son site |
 
 Ces requêtes sont envoyées directement depuis votre navigateur. Comme pour
 toute requête sur Internet, les serveurs destinataires reçoivent votre
@@ -47,15 +50,25 @@ reçoit aucune de ces données.
 | Donnée | Emplacement | Durée |
 |---|---|---|
 | Dernière demande de vérification (texte ou adresse lue), le temps de l'afficher dans le panneau | Stockage de session de l'extension | Effacée à la fermeture du navigateur |
-| Préférence « Ne plus proposer » de l'encadré | Stockage local de l'extension | Jusqu'à réactivation ou désinstallation |
+| Préférence « Proposer la vérification sur les pages d'annonces » (désactivée par défaut) | Stockage local de l'extension | Jusqu'à modification ou désinstallation |
 
 ## Permissions demandées
 
 - **Menus contextuels** : l'entrée « Vérifier la couverture réseau » du clic droit.
 - **Stockage** : transmettre votre demande au panneau et mémoriser la préférence ci-dessus.
 - **Onglet actif et injection de script** (`activeTab`, `scripting`) : lire, à votre clic seulement, la localisation publiée par l'annonce affichée.
-- **Accès aux pages d'annonces des sites pris en charge** : afficher l'encadré de vérification sur ces pages uniquement.
+- **Accès aux pages d'annonces des sites pris en charge** : afficher l'encadré de vérification sur ces pages uniquement, si vous l'avez activé.
 - **Panneau latéral** (Chrome, Edge) et **règles d'affichage** (`declarativeContent`) : afficher le résultat et colorer l'icône sur les pages d'annonces, sans que l'extension lise l'adresse des pages.
+
+## Publicité
+
+Le panneau peut afficher, **sous le résultat**, un encart signalé
+« Publicité » (texte, image et lien). Son contenu est chargé depuis le même
+serveur que les cartes, sans script publicitaire, sans cookie ni pistage, et
+sans transmettre l'adresse recherchée. L'annonceur ne reçoit rien tant que
+vous ne cliquez pas sur l'encart. La publicité n'a **aucune influence** sur
+les verdicts ni sur le classement des opérateurs, calculés uniquement à partir
+des données de l'Arcep.
 
 ## Sources des données affichées
 

@@ -24,7 +24,7 @@ figurent que dans les justifications de permissions, lues par les relecteurs.
 > **Comment ça marche**
 > • Sélectionnez une adresse sur n'importe quelle page, faites un clic droit puis « Vérifier la couverture réseau ».
 > • Ou cliquez sur l'icône et tapez une adresse ou un nom de commune.
-> • Sur les pages d'annonces des principaux sites de réservation d'hébergements et d'annonces immobilières, l'extension vous propose de vérifier la connexion du logement en un clic.
+> • Sur les pages d'annonces des principaux sites de réservation d'hébergements et d'annonces immobilières, l'icône devient orange : un clic suffit pour vérifier la connexion du logement. En option, un encadré peut aussi vous le proposer directement sur la page.
 >
 > **Un verdict clair pour chaque opérateur** (Orange, SFR, Bouygues Telecom, Free Mobile)
 > 🟢 5G partout · 🟡 5G sur une partie · 🟠 4G · 🔴 4G faible ou pas de réseau
@@ -36,7 +36,7 @@ figurent que dans les justifications de permissions, lues par les relecteurs.
 > • Commune : part des habitants couverts, là où ils vivent (les zones inhabitées ne comptent pas).
 >
 > **Respect de votre vie privée**
-> L'extension ne lit pas les pages que vous visitez : elle n'utilise que le texte que vous sélectionnez, ce que vous tapez ou, à votre clic, l'adresse publiée par l'annonce. Pas de compte, pas de publicité, pas de mesure d'audience.
+> L'extension ne lit pas les pages que vous visitez : elle n'utilise que le texte que vous sélectionnez, ce que vous tapez ou, à votre clic, l'adresse publiée par l'annonce. Pas de compte, pas de pistage, pas de mesure d'audience. Un éventuel encart publicitaire, clairement signalé et placé sous le résultat, ne piste pas et n'influence jamais les verdicts ni le classement.
 >
 > **Sources** : cartes de couverture théorique de l'Arcep (« Mon Réseau Mobile »), population Insee, géocodage et fond de carte IGN (Géoplateforme). Données publiques sous Licence Ouverte. Couverture théorique extérieure, à titre indicatif.
 >
@@ -65,12 +65,12 @@ figurent que dans les justifications de permissions, lues par les relecteurs.
 | Permission | Justification |
 |---|---|
 | `contextMenus` | Entrée « Vérifier la couverture réseau » du clic droit sur un texte sélectionné, et « Vérifier la connexion de ce logement » sur les pages d'annonces. |
-| `storage` | Transmettre la demande de l'arrière-plan au panneau latéral (stockage de session) et mémoriser la préférence « Ne plus proposer » de l'encadré. |
+| `storage` | Transmettre la demande de l'arrière-plan au panneau latéral (stockage de session) et mémoriser l'option « Proposer la vérification sur les pages d'annonces » (désactivée par défaut). |
 | `sidePanel` | Afficher le résultat dans le panneau latéral. |
 | `activeTab` | Après un clic de l'utilisateur sur l'icône ou le menu, lire la localisation publiée par l'annonce de l'onglet actif. Aucun accès sans clic. |
 | `scripting` | Exécuter, dans l'onglet actif et à la demande de l'utilisateur seulement, la fonction qui lit la localisation publiée (données structurées schema.org). |
 | `declarativeContent` | Colorer l'icône sur les pages d'annonces reconnues ; la comparaison d'adresse est faite par le navigateur, l'extension ne lit pas l'URL. |
-| Accès aux sites (scripts de contenu) | Afficher, sur les seules pages d'annonces des sites suivants, un encadré proposant la vérification : booking.com, expedia (.fr .com .be .ca .ch), hotels.com, tripadvisor (.fr .com .be .ch .ca), airbnb (.fr .com .be .ch .ca), gites-de-france.com, leboncoin.fr (annonces immobilières), pap.fr, bienici.com, seloger.com. Le script n'affiche que l'encadré ; la page n'est lue qu'au clic sur « Vérifier ». |
+| Accès aux sites (scripts de contenu) | Afficher, sur les seules pages d'annonces des sites suivants, un encadré proposant la vérification, uniquement si l'utilisateur a activé cette option dans le panneau (désactivée par défaut) : booking.com, expedia (.fr .com .be .ca .ch), hotels.com, tripadvisor (.fr .com .be .ch .ca), airbnb (.fr .com .be .ch .ca), gites-de-france.com, leboncoin.fr (annonces immobilières), pap.fr, bienici.com, seloger.com. Le script n'affiche que l'encadré ; la page n'est lue qu'au clic sur « Vérifier ». |
 | Code distant | Aucun : tout le code est dans le paquet. |
 
 **Données utilisateur** (cases à cocher) :
@@ -99,6 +99,21 @@ figurent que dans les justifications de permissions, lues par les relecteurs.
   - Les avertissements dans `maplibre-gl-worker-*.mjs` proviennent de la bibliothèque MapLibre GL JS 6 (BSD-3), non modifiée.
 
 ---
+
+## Encart publicitaire
+
+Emplacement sous le résultat (après « Voir sur la carte complète »), vide tant
+que le fichier `encart.json` n'est pas publié à la racine des tuiles (à côté de
+`manifest.json`). Format : voir `store/encart.exemple.json` ; l'image doit être
+sur le même serveur (sinon l'encart est ignoré), le lien en https. L'activer
+ou le changer ne demande pas de republier l'extension ; pour le retirer,
+supprimer le fichier ou mettre `"actif": false`.
+
+Avant de l'activer :
+- [ ] Statut pour encaisser (ex. micro-entreprise) et mentions légales (éditeur, contact).
+- [ ] Jamais d'annonce pour un hébergement ou un site de réservation (risque de parasitisme envers les sites d'annonces).
+- [ ] Avis d'un avocat recommandé (encadré sur sites tiers + publicité + éventuelle affiliation opérateur).
+- [ ] Le classement reste calculé uniquement sur les données Arcep, même en cas d'affiliation avec un opérateur.
 
 ## Avant de publier
 

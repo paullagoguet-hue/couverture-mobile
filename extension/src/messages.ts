@@ -12,5 +12,8 @@ export interface CheckPageResponse {
   panelOpened: boolean;
 }
 
-/** Préférence « Ne plus proposer » de la carte (storage.local). */
-export const CARD_DISABLED_KEY = 'cardDisabled';
+/**
+ * Proposition de vérification sur les pages d'annonces (storage.local) :
+ * désactivée par défaut, l'utilisateur l'active lui-même depuis le panneau.
+ */
+export const CARD_ENABLED_KEY = 'cardEnabled';

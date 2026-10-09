@@ -7,13 +7,13 @@
  *   la carte se contente de s'afficher.
  * - Au clic : lecture de l'adresse publiée en données structurées (comme pour
  *   l'icône), puis ouverture du panneau avec le résultat.
- * - [×] masque la carte sur cette page ; « Ne plus proposer » la désactive
- *   partout (réactivable depuis le panneau).
+ * - Désactivée par défaut : n'apparaît que si l'utilisateur l'a activée dans le
+ *   panneau. [×] la masque sur cette page ; « Ne plus proposer » la désactive.
  * - Shadow DOM fermé : styles et code isolés de ceux du site.
  */
 import { api } from './browser.ts';
 import { extractStructuredAddress, isLodgingUrl, LODGING_RULES } from './lodging.ts';
-import { CARD_DISABLED_KEY, type CheckPageMessage, type CheckPageResponse } from './messages.ts';
+import { CARD_ENABLED_KEY, type CheckPageMessage, type CheckPageResponse } from './messages.ts';
 
 const HOST_ID = 'verifier-couverture-reseau-carte';
 
@@ -55,9 +55,9 @@ async function showCard() {
   // Le content script est déclaré sur des motifs parfois plus larges que les fiches
   // (ex. adresses sans préfixe fixe) : on ne s'affiche que sur une fiche reconnue.
   if (!isLodgingUrl(location.href)) return;
-  // Désactivée par l'utilisateur, ou déjà affichée (navigation interne du site).
-  const settings = await api.storage.local.get(CARD_DISABLED_KEY);
-  if (settings[CARD_DISABLED_KEY] || document.getElementById(HOST_ID)) return;
+  // Non activée par l'utilisateur, ou déjà affichée (navigation interne du site).
+  const settings = await api.storage.local.get(CARD_ENABLED_KEY);
+  if (settings[CARD_ENABLED_KEY] !== true || document.getElementById(HOST_ID)) return;
 
   const host = Object.assign(document.createElement('div'), { id: HOST_ID });
   const root = host.attachShadow({ mode: 'closed' });
@@ -81,7 +81,7 @@ async function showCard() {
 
   root.querySelector('.close')!.addEventListener('click', () => host.remove());
   root.querySelector('.never')!.addEventListener('click', () => {
-    void api.storage.local.set({ [CARD_DISABLED_KEY]: true });
+    void api.storage.local.set({ [CARD_ENABLED_KEY]: false });
     host.remove();
   });
 
