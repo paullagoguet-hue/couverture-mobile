@@ -38,6 +38,9 @@
         padding: 12px 12px 10px; background: var(--card); border-bottom: 1px solid var(--border);
       }
       .brand { display: flex; align-items: center; gap: 9px; margin: 0 0 10px; }
+      .brand > div { flex: 1; }
+      .icon-btn { width: 32px; height: 32px; display: grid; place-items: center; border: none; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
+      .icon-btn:hover { background: var(--accent-soft); color: var(--accent); }
       .brand svg { width: 28px; height: 28px; flex: none; }
       .brand strong { display: block; font-size: 15px; line-height: 1.2; }
       .brand small { display: block; font-size: 11.5px; color: var(--muted); }
@@ -148,9 +151,6 @@
       .badge { font-size: 11px; font-weight: 600; color: var(--accent); display: inline-flex; align-items: center; gap: 3px; }
       .badge .icon { width: 12px; height: 12px; color: #f2a900; }
       .pill { min-width: 112px; text-align: center; font-weight: 700; font-size: 13px; padding: 6px 10px; border-radius: 8px; white-space: nowrap; }
-      .status-legend { list-style: none; padding: 10px 0 0; margin: 10px 0 0; border-top: 1px dashed var(--border); display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; font-size: 11px; color: var(--muted); }
-      .status-legend li { display: flex; align-items: center; gap: 5px; }
-      .chip { width: 10px; height: 10px; border-radius: 3px; flex: none; }
 
       /* Mini-carte */
       .map-caption { margin: 0 0 8px; font-size: 13px; }
@@ -159,9 +159,6 @@
       .map-actions { margin-top: 10px; }
 
       .source { color: var(--muted); font-size: 11.5px; margin: 12px 2px 0; }
-      details.more { margin: 8px 2px 0; font-size: 12px; color: var(--muted); }
-      details.more summary { cursor: pointer; color: var(--accent); font-weight: 600; }
-      details.more p { margin: 6px 0 0; }
 
       /* Encart publicitaire (sous le résultat) */
       .encart { margin-top: 14px; padding: 8px 10px 10px; border: 1px dashed #cfd8dc; border-radius: 10px; background: #fafbfb; }
@@ -171,8 +168,18 @@
       .encart img { width: 56px; height: 56px; object-fit: contain; border-radius: 6px; flex: none; }
       .encart strong { display: block; color: var(--accent); }
 
-      /* Pied de page */
-      footer { margin: 18px 12px 0; padding-top: 12px; border-top: 1px solid var(--border); display: grid; gap: 8px; color: var(--muted); font-size: 11.5px; }
+      /* Page d'infos */
+      .back { margin-top: 12px; padding: 4px 0; border: none; background: none; color: var(--accent); font-weight: 600; cursor: pointer; }
+      .legend { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+      .legend li { display: grid; grid-template-columns: 112px 1fr; gap: 10px; align-items: center; font-size: 12.5px; }
+      .legend .pill { min-width: 0; font-size: 12px; padding: 4px 6px; }
+      .facts { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: 12.5px; }
+      .hint { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+      .hint .icon { width: 13px; height: 13px; color: #f2a900; vertical-align: -2px; }
+      #info h3 + p.hint { margin-top: 0; }
+      #version { margin: 12px 2px 0; font-size: 11px; color: var(--muted); }
+      .link { padding: 0; border: none; background: none; color: var(--accent); cursor: pointer; text-decoration: underline; font-size: inherit; }
+      .card-option { font-size: 12.5px; }
       .card-option { display: flex; gap: 8px; align-items: center; cursor: pointer; }
       .switch { position: relative; width: 30px; height: 17px; flex: none; }
       .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
@@ -181,7 +188,6 @@
       .switch input:checked + span { background: var(--accent); }
       .switch input:checked + span::after { transform: translateX(13px); }
       .switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
-      #version { opacity: 0.8; }
 
       button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       @media (prefers-reduced-motion: reduce) {
@@ -197,7 +203,10 @@
           <rect x="5.4" y="18.9" width="3.8" height="7.7" rx="0.8" fill="#fff" /><rect x="11.2" y="14.8" width="3.8" height="11.8" rx="0.8" fill="#fff" />
           <rect x="17" y="10.7" width="3.8" height="15.9" rx="0.8" fill="#fff" /><rect x="22.7" y="6.6" width="3.8" height="20" rx="0.8" fill="#fff" />
         </svg>
-        <div><strong>Vérifier la couverture réseau</strong><small>4G et 5G des quatre opérateurs · données Arcep</small></div>
+        <div><strong>Vérifier la couverture réseau</strong><small>4G et 5G · données Arcep</small></div>
+        <button id="info-open" class="icon-btn" type="button" title="Infos et sources" aria-label="Infos et sources">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 11v5.5M12 7.5h.01" /></svg>
+        </button>
       </div>
       <form id="search" role="search" autocomplete="off">
         <div class="search-row">
@@ -212,14 +221,19 @@
     </header>
     <main>
       <div id="result" aria-live="polite"></div>
+      <div id="info" hidden>
+        <button class="back" type="button">← Retour</button>
+        <div id="info-content"></div>
+        <section class="card">
+          <h3>Réglage</h3>
+          <label class="card-option" hidden>
+            <span class="switch"><input id="card-enabled" type="checkbox" /><span></span></span>
+            Proposer la vérification directement sur les pages d'annonces
+          </label>
+        </section>
+        <p id="version"></p>
+      </div>
     </main>
-    <footer>
-      <label class="card-option" hidden>
-        <span class="switch"><input id="card-enabled" type="checkbox" /><span></span></span>
-        Proposer la vérification sur les pages d'annonces de logement
-      </label>
-      <span id="version"></span>
-    </footer>
     <script type="module" src="./src/panel.ts"></script>
   </body>
 </html>

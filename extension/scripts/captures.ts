@@ -33,31 +33,31 @@ const SCENES: Scene[] = [
   {
     file: '0-accueil.png',
     title: 'Simple, sans compte',
-    text: "Tapez une adresse, sélectionnez-la sur une page, ou laissez l'extension lire l'adresse d'une annonce de logement.",
+    text: 'Tapez une adresse, sélectionnez-la sur une page, ou ouvrez une annonce de logement.',
     query: '',
   },
   {
     file: '1-adresse.png',
     title: 'Votre téléphone captera-t-il ?',
-    text: "La couverture 4G et 5G des quatre opérateurs à n'importe quelle adresse, d'après les cartes publiques de l'Arcep.",
+    text: "La 4G et la 5G des quatre opérateurs, à n'importe quelle adresse.",
     query: 'q=10%20Rue%20de%20Rivoli%2075004%20Paris',
   },
   {
     file: '2-commune.png',
     title: 'Un verdict clair par opérateur',
-    text: 'Vert : 5G partout. Jaune : 5G sur une partie. Orange : 4G. Rouge : 4G faible ou pas de réseau. Pour une commune, calculé sur ses habitants.',
+    text: 'Vert : 5G partout. Jaune : 5G partielle. Orange : 4G. Rouge : réseau faible.',
     query: 'q=Bonneval-sur-Arc',
   },
   {
     file: '3-annonce.png',
     title: "Même quand l'adresse est cachée",
-    text: "Pour une annonce dont l'adresse exacte n'est pas publiée, la couverture est évaluée dans un rayon de 1 à 2 km.",
+    text: 'Annonce sans adresse exacte : couverture dans un rayon de 1 à 2 km.',
     query: page({ name: 'Chalet en montagne', address: 'Freissinières', lat: 44.742, lng: 6.48946, precision: 'approximate', radiusM: 1000 }),
   },
   {
     file: '4-saisie.png',
-    title: 'Sélectionnez, ou tapez une adresse',
-    text: 'Clic droit sur une adresse dans une page, ou saisie avec suggestions : le résultat s’affiche dans le panneau latéral.',
+    title: 'Tapez, ou faites un clic droit',
+    text: 'Suggestions d’adresses pendant la frappe.',
     query: '',
     prepare: async (p) => {
       await p.evaluate(`(() => {

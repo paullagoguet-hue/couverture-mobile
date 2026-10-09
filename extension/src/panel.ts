@@ -23,9 +23,7 @@ import {
   loadManifest,
   operatorStatus,
   SHARED_FETCH_TIMEOUT_MS,
-  STATUS_COLORS,
   summarizeByOperator,
-  type StatusKind,
   type GeocodeResult,
   type LayerCoverage,
   type Manifest,
@@ -33,9 +31,10 @@ import {
 
 import { api, PENDING_KEY, type PendingQuery } from './browser.ts';
 import { CARD_ENABLED_KEY } from './messages.ts';
-import { DISCLAIMER, SITE_URL, TILES_BASE_URL } from './config.ts';
+import { SITE_URL, TILES_BASE_URL } from './config.ts';
 import { fillEncart } from './encart.ts';
 import { HERO_SVG, ICONS } from './illustrations.ts';
+import { InfoPage } from './info.ts';
 import { MiniMap } from './minimap.ts';
 import { SearchBox } from './search.ts';
 
@@ -44,14 +43,17 @@ let reader = new CoverageReader(TILES_BASE_URL);
 let manifestPromise: Promise<Manifest> | undefined;
 let currentRun: AbortController | undefined;
 
+/** Manifeste partagé entre recherches : téléchargé sans le signal de l'une d'elles. */
+const getManifest = () =>
+  (manifestPromise ??= loadManifest(TILES_BASE_URL, fetch, AbortSignal.timeout(SHARED_FETCH_TIMEOUT_MS)));
+
+const info = new InfoPage(getManifest);
+
 /** Délai max pour lire la couverture (manifeste + tuiles des 8 couches). */
 const COVERAGE_TIMEOUT_MS = 20_000;
 
 const escapeHtml = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
-
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
 /** Rayon par défaut si la page ne précise pas le sien (cf. radiusFor dans lodging.ts). */
 const APPROX_RADIUS_M = 1000;
@@ -77,6 +79,7 @@ function startRun(note = '', radiusM?: number): Run {
 
 /** Remplace le contenu (avec un léger fondu) ; `note` éventuelle en tête. */
 function show(html: string, note = '') {
+  info.hide(); // une nouvelle demande prend la place de la page d'infos
   out.innerHTML = (note ? `<p class="from-page">${note}</p>` : '') + html;
   // Relance l'animation d'apparition.
   out.style.animation = 'none';
@@ -111,22 +114,15 @@ function showWelcome() {
   show(`<section class="welcome">
     ${HERO_SVG}
     <h2>Votre téléphone captera-t-il ?</h2>
-    <p class="lead">Avant de réserver un logement, de louer ou d'acheter, vérifiez la couverture 4G et 5G
-      des quatre opérateurs à l'adresse, d'après les cartes publiques de l'Arcep.</p>
+    <p class="lead">La 4G et la 5G des quatre opérateurs, à n'importe quelle adresse.</p>
     <div class="card">
-      <h3>Trois façons de vérifier</h3>
       <ul class="steps">
-        <li><span class="bubble">${ICONS.search}</span><div><strong>Tapez une adresse</strong>
-          <span>ou un nom de commune, dans le champ ci-dessus.</span></div></li>
-        <li><span class="bubble">${ICONS.select}</span><div><strong>Sélectionnez une adresse sur une page</strong>
-          <span>puis clic droit, « Vérifier la couverture réseau ».</span></div></li>
+        <li><span class="bubble">${ICONS.search}</span><div><strong>Tapez une adresse</strong></div></li>
+        <li><span class="bubble">${ICONS.select}</span><div><strong>Ou sélectionnez-la sur une page</strong>
+          <span>puis clic droit</span></div></li>
         <li><span class="bubble">${ICONS.house}</span><div><strong>Sur une annonce de logement</strong>
-          <span>l'icône de l'extension devient orange : cliquez dessus, l'adresse de l'annonce est lue pour vous.</span></div></li>
+          <span>cliquez sur l'icône orange</span></div></li>
       </ul>
-    </div>
-    <div class="card">
-      <h3>Le verdict, pour chaque opérateur</h3>
-      ${legendHtml()}
     </div>
     <div class="card">
       <h3>Essayer</h3>
@@ -151,8 +147,7 @@ async function run(text: string, note = '', radiusM?: number) {
         {
           icon: ICONS.pin,
           title: 'Adresse introuvable',
-          body: `<p>Aucun lieu ne correspond à « ${escapeHtml(text)} ».</p>
-                 <p>Essayez une adresse complète (numéro, rue, ville) ou un nom de commune.</p>`,
+          body: `<p>Essayez avec la ville ou le code postal.</p>`,
         },
         r.note,
       );
@@ -161,7 +156,7 @@ async function run(text: string, note = '', radiusM?: number) {
     if (isUnambiguous(results)) return await showCoverage(results[0], r);
     // Plusieurs lieux plausibles : l'utilisateur choisit.
     show(
-      `<div class="card"><strong>Plusieurs lieux correspondent à « ${escapeHtml(text)} »</strong>
+      `<div class="card"><strong>Lequel ?</strong>
         <ul class="choices">${results
           .map((p, i) => `<li><button type="button" data-i="${i}">${ICONS.pin}<span>${escapeHtml(p.label)}<small>${escapeHtml(p.context)}</small></span></button></li>`)
           .join('')}</ul></div>`,
@@ -181,9 +176,9 @@ async function run(text: string, note = '', radiusM?: number) {
       {
         icon: ICONS.alert,
         error: true,
-        title: "La recherche d'adresse a échoué",
-        body: `<p>Le service de géocodage de l'IGN (data.geopf.fr) ne répond pas. Vérifiez votre connexion.</p>
-               <p class="detail">Détail : ${escapeHtml((err as Error).message)}</p>`,
+        title: 'Recherche impossible',
+        body: `<p>Vérifiez votre connexion.</p>
+               <p class="detail">${escapeHtml((err as Error).message)}</p>`,
         action: `<button class="btn" id="retry" type="button">${ICONS.retry}Réessayer</button>`,
       },
       r.note,
@@ -199,8 +194,7 @@ async function showCoverage(place: GeocodeResult, r: Run) {
   const signal = AbortSignal.any([r.signal, AbortSignal.timeout(COVERAGE_TIMEOUT_MS)]);
   try {
     // Manifeste partagé entre recherches : téléchargé sans le signal de celle-ci.
-    manifestPromise ??= loadManifest(TILES_BASE_URL, fetch, AbortSignal.timeout(SHARED_FETCH_TIMEOUT_MS));
-    const manifest = await abortable(manifestPromise, signal);
+    const manifest = await abortable(getManifest(), signal);
     // Commune sans adresse précise : parts d'habitants précalculées sur tout son
     // territoire si elles sont publiées, sinon couverture au point central.
     const commune = place.type === 'municipality' && place.citycode
@@ -222,9 +216,9 @@ async function showCoverage(place: GeocodeResult, r: Run) {
       {
         icon: ICONS.noSignal,
         error: true,
-        title: 'Impossible de lire la couverture',
-        body: `<p>${timedOut ? `Le serveur des cartes ne répond pas (délai de ${COVERAGE_TIMEOUT_MS / 1000} s dépassé).` : 'Le serveur des cartes est injoignable.'}</p>
-               <p class="detail">Serveur : ${escapeHtml(new URL(TILES_BASE_URL).origin)} · ${escapeHtml((err as Error).message)}</p>`,
+        title: 'Couverture indisponible',
+        body: `<p>${timedOut ? 'Le serveur ne répond pas.' : 'Serveur injoignable.'} Réessayez dans un instant.</p>
+               <p class="detail">${escapeHtml(new URL(TILES_BASE_URL).origin)} · ${escapeHtml((err as Error).message)}</p>`,
         action: `<button class="btn" id="retry" type="button">${ICONS.retry}Réessayer</button>`,
       },
       r.note,
@@ -232,19 +226,6 @@ async function showCoverage(place: GeocodeResult, r: Run) {
     out.querySelector('#retry')!.addEventListener('click', () => void showCoverage(place, startRun(r.note, r.radiusM)));
   }
 }
-
-/** Légende des couleurs du verdict (même ordre que le classement). */
-const STATUS_LEGEND: [StatusKind, string][] = [
-  ['5g', '5G partout'],
-  ['5g-partial', '5G sur plus de la moitié'],
-  ['4g', '4G (5G absente ou trop partielle)'],
-  ['none', '4G faible ou pas de réseau'],
-];
-
-const legendHtml = () =>
-  `<ul class="status-legend">${STATUS_LEGEND.map(
-    ([k, text]) => `<li><span class="chip" style="background:${STATUS_COLORS[k].color}"></span>${text}</li>`,
-  ).join('')}</ul>`;
 
 function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: LayerCoverage[], r: Run) {
   const summaries = summarizeByOperator(coverage);
@@ -268,27 +249,19 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
     .join('');
 
   const bestText = !best.length
-    ? 'Aucun opérateur ne couvre cet endroit en 4G ou 5G.'
+    ? 'Ni 4G ni 5G ici.'
     : allTied
-      ? `Les ${summaries.length} opérateurs offrent la même couverture ici.`
-      : best.length === 1
-        ? `Meilleure couverture : <strong>${escapeHtml(best[0].operatorLabel)}</strong>`
-        : `Meilleure couverture (ex æquo) : <strong>${best.map((b) => escapeHtml(b.operatorLabel)).join(', ')}</strong>`;
-
-  // Dates des données par techno (la 5G et la 4G ne sont pas publiées au même trimestre).
-  const technos = [...new Set(manifest.layers.map((l) => l.techno))].sort();
-  const dates = technos
-    .map((t) => `${t.toUpperCase()} au ${formatDate(manifest.layers.find((l) => l.techno === t)!.date)}`)
-    .join(', ');
+      ? 'Même couverture pour les quatre opérateurs.'
+      : `Meilleur : <strong>${best.map((b) => escapeHtml(b.operatorLabel)).join(', ')}</strong>`;
 
   const area = coverage[0]?.area;
   const areaNote =
     zone === 'commune'
       ? area!.basis === 'surface'
-        ? 'Taux de 5G calculé sur tout le territoire de la commune (carte Arcep à 50 m).'
-        : `Taux de 5G calculé sur les ${(area!.inhabitants ?? 0).toLocaleString('fr-FR')} habitants de la commune (Insee 2019), là où ils vivent : les zones inhabitées ne comptent pas.`
+        ? 'Taux de 5G calculé sur toute la commune'
+        : `Taux de 5G calculé sur les ${(area!.inhabitants ?? 0).toLocaleString('fr-FR')} habitants de la commune`
       : zone === 'circle'
-        ? `Taux de 5G évalué dans un rayon de ${formatDistance(area!.radiusM ?? APPROX_RADIUS_M)} autour de l'emplacement indiqué.`
+        ? `Taux de 5G dans un rayon de ${formatDistance(area!.radiusM ?? APPROX_RADIUS_M)}`
         : '';
 
   show(
@@ -296,30 +269,24 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
       <div class="place-head">${ICONS.pin}<h2>${escapeHtml(place.label)}</h2></div>
       ${areaNote ? `<p class="area-note">${areaNote}</p>` : ''}
       ${place.type === 'municipality' && !r.note && zone !== 'commune' // le bandeau de la page le dit déjà
-        ? '<p class="warning">Commune sans adresse précise : couverture au point central de la commune, elle peut varier ailleurs sur son territoire.</p>'
+        ? '<p class="warning">Couverture au centre de la commune</p>'
         : ''}
     </section>
     <section class="card">
       <p class="best-text">${best.length && !allTied ? ICONS.star : ''}<span>${bestText}</span></p>
       <ul class="operators">${rows}</ul>
-      ${legendHtml()}
     </section>
     <section class="card">
-      <p class="map-caption">Carte : <strong id="map-layer"></strong> <small>— touchez un opérateur pour changer</small></p>
+      <p class="map-caption">Carte : <strong id="map-layer"></strong></p>
       <div id="minimap-slot"></div>
       <p class="map-actions"><a id="full-map" class="btn" target="_blank" rel="noopener">Voir sur la carte complète ${ICONS.arrow}</a></p>
     </section>
-    <p class="source">${DISCLAIMER} (données ${dates}).</p>
-    <details class="more"><summary>Bon à savoir</summary>
-      <p>Un verdict « 5G » ne garantit pas le très haut débit : l'Arcep ne distingue pas la bande 700 MHz
-      (longue portée, débit proche de la 4G) de la bande 3,5 GHz (rapide, faible portée).</p>
-      <p>Couverture théorique, en extérieur : à l'intérieur d'un bâtiment, le signal peut être plus faible.
-      Le détail par niveau s'affiche au survol d'un opérateur.</p>
-    </details>
+    <p class="source">Couverture théorique, source Arcep · <button type="button" class="link" data-info>Infos</button></p>
     <div id="encart-slot"></div>`,
     r.note,
   );
 
+  out.querySelector('[data-info]')!.addEventListener('click', () => void info.show());
   const miniMap = attachMiniMap(document.getElementById('minimap-slot')!);
   // Publicité éventuelle : sous le résultat, jamais avant, sans effet sur le classement.
   void fillEncart(document.getElementById('encart-slot')!);
@@ -394,18 +361,15 @@ function handlePending(p: PendingQuery) {
     currentRun?.abort();
     message({
       icon: ICONS.house,
-      title: "Ouvrez la page de l'hébergement",
-      body: `<p>Cette page (par exemple une liste de résultats) ne correspond pas à un logement précis.</p>
-             <p>Cliquez sur le logement qui vous intéresse : sa page s'ouvre, souvent dans un nouvel onglet, et l'icône
-             de l'extension devient orange. Cliquez alors de nouveau sur l'icône.</p>`,
+      title: 'Ouvrez la page du logement',
+      body: `<p>Puis cliquez sur l'icône orange.</p>`,
     });
   } else if (p.kind === 'page-error') {
     currentRun?.abort();
     message({
       icon: ICONS.select,
-      title: 'Aucune adresse lisible sur cette page',
-      body: `<p>Sélectionnez l'adresse affichée sur la page puis faites un clic droit, « Vérifier la couverture réseau »,
-             ou tapez-la ci-dessus.</p>`,
+      title: 'Adresse non trouvée sur la page',
+      body: `<p>Sélectionnez-la puis clic droit, ou tapez-la ci-dessus.</p>`,
     });
     search.focus();
   } else {
@@ -415,12 +379,10 @@ function handlePending(p: PendingQuery) {
     // Précision publiée par le site : on la dit clairement.
     const precisionNote = {
       exact: '',
-      approximate:
-        `<br /><strong>Emplacement approximatif</strong> : ce site ne publie pas l'adresse exacte (souvent communiquée après réservation), la couverture est donc évaluée dans un rayon de ${formatDistance(radius ?? APPROX_RADIUS_M)}.`,
-      commune:
-        "<br /><strong>Commune seulement</strong> : ce site ne publie pas l'adresse du bien, la couverture est donc donnée pour l'ensemble de la commune.",
+      approximate: '<br />Adresse exacte non publiée par le site',
+      commune: '<br />Seule la commune est publiée par le site',
     }[p.precision ?? 'exact'];
-    const note = `${p.precision === 'exact' ? 'Adresse' : 'Localisation'} lue sur la page : ${what}${precisionNote}`;
+    const note = `Lu sur la page : ${what}${precisionNote}`;
     if (p.lat !== undefined && p.lng !== undefined) {
       // Coordonnées publiées par la page : pas besoin de géocoder.
       search.setText(p.address ?? p.name ?? '');
@@ -469,7 +431,9 @@ if (testQuery) {
   showWelcome();
 }
 
-// Version affichée en bas du panneau : permet de vérifier que la bonne version est chargée.
+document.getElementById('info-open')!.addEventListener('click', () => (info.visible ? info.hide() : void info.show()));
+
+// Version affichée dans la page d'infos : permet de vérifier que la bonne version est chargée.
 document.getElementById('version')!.textContent = `version ${api?.runtime.getManifest().version ?? 'test'}`;
 
 // Proposition de vérification sur les pages d'annonces : désactivée par défaut,

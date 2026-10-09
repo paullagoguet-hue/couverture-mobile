@@ -10,11 +10,11 @@ export const TILES_BASE_URL: string = import.meta.env.VITE_TILES_BASE_URL ?? 'ht
 /** Site de la carte complète, ouvert par le lien « Voir sur la carte complète ». */
 export const SITE_URL: string = import.meta.env.VITE_SITE_URL ?? 'http://127.0.0.1:5173/';
 
-/** Mention obligatoire affichée avec chaque résultat. */
-export const DISCLAIMER = 'Couverture théorique extérieure, source Arcep';
-
 /**
  * Encart publicitaire facultatif (cf. encart.ts), publié à côté des tuiles :
  * même serveur, donc déjà autorisé par la CSP. Fichier absent = pas d'encart.
  */
 export const ENCART_URL: string = new URL('encart.json', TILES_BASE_URL).href;
+
+/** Politique de confidentialité publiée (lien de la page d'infos et des stores). */
+export const PRIVACY_URL = 'https://github.com/paullagoguet-hue/couverture-mobile/blob/main/PRIVACY.md';
