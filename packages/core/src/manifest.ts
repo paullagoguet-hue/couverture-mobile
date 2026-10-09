@@ -18,6 +18,11 @@ export interface Manifest {
   generated_at: string;
   latest_quarter: string;
   source: { producer: string; dataset: string; dataset_url: string; license: string };
+  /**
+   * Pays qui publient un débit estimé par opérateur (Portugal) : classe des
+   * tuiles (attribut « classe ») -> débit minimal en Mbit/s (0 : « > 0 »).
+   */
+  speed_classes?: Record<string, number>;
   layers: LayerInfo[];
 }
 

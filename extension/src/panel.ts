@@ -46,6 +46,10 @@ import {
   operatorStatus,
   readNetworks,
   resolvePlace,
+  speedFillExpression,
+  speedRating,
+  speedStatus,
+  SPEED_COLORS,
   SHARED_FETCH_TIMEOUT_MS,
   summarizeByOperator,
   tilesBaseFor,
@@ -67,7 +71,7 @@ import { FLAGS, HERO_SVG, ICONS } from './illustrations.ts';
 import { InfoPage } from './info.ts';
 import { MiniMap } from './minimap.ts';
 import { SearchBox } from './search.ts';
-import { statusDetail, statusLabel } from './verdict-text.ts';
+import { speedDetail, speedLabel, speedName, speedSubtitle, statusDetail, statusLabel } from './verdict-text.ts';
 
 configureGeocoders({ photonUrl: PHOTON_URL });
 
@@ -403,11 +407,33 @@ async function showCoverage(place: GeocodeResult, r: Run) {
   }
 }
 
+/** Une ligne d'opérateur : badge (couleur, texte), infobulle, donnée publiée, couche de la carte. */
+interface RowView {
+  color: string;
+  textColor: string;
+  label: string;
+  detail: string;
+  sub: string;
+  layerId?: string;
+  rating?: { score: number; quality: number };
+}
+
 function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: LayerCoverage[], r: Run) {
   const c = place.country;
   const summaries = summarizeByOperator(coverage);
-  const statuses = new Map(summaries.map((s) => [s.operator, operatorStatus(s)]));
-  const best = bestOperators(summaries);
+  // Verdict de débit là où il est publié par opérateur (Portugal), sinon de couverture (5G / 4G…).
+  const speedClasses = manifest.speed_classes;
+  const views = new Map<string, RowView>(
+    summaries.map((s) => {
+      if (speedClasses) {
+        const st = speedStatus(s, speedClasses);
+        return [s.operator, { ...st, label: speedLabel(st), detail: speedDetail(st), sub: speedSubtitle(st), rating: speedRating(st) }];
+      }
+      const st = operatorStatus(s);
+      return [s.operator, { ...st, label: statusLabel(st), detail: statusDetail(s, st), sub: '' }];
+    }),
+  );
+  const best = speedClasses ? bestOperators(summaries, (s) => views.get(s.operator)!.rating!) : bestOperators(summaries);
   // Tous ex æquo : pas de « meilleur » à mettre en avant.
   const allTied = best.length === summaries.length && summaries.length > 1;
   const bestIds = new Set(allTied ? [] : best.map((b) => b.operator));
@@ -416,11 +442,11 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
   // Une ligne par opérateur : un seul verdict coloré (5G / 5G partielle / 4G / …).
   const rows = summaries
     .map((s) => {
-      const st = statuses.get(s.operator)!;
+      const st = views.get(s.operator)!;
       const isBest = bestIds.has(s.operator);
-      return `<li><button type="button" class="cell${isBest ? ' best' : ''}" data-layer="${st.layerId ?? ''}" title="${escapeHtml(statusDetail(s, st))}"${st.layerId ? '' : ' disabled'}>
-          <span class="op-name">${escapeHtml(s.operatorLabel)}${isBest ? `<span class="badge">${ICONS.star}${t('bestBadge')}</span>` : ''}</span>
-          <span class="pill" style="background:${st.color};color:${st.textColor}">${escapeHtml(statusLabel(st))}</span>
+      return `<li><button type="button" class="cell${isBest ? ' best' : ''}" data-layer="${st.layerId ?? ''}" title="${escapeHtml(st.detail)}"${st.layerId ? '' : ' disabled'}>
+          <span class="op-name">${escapeHtml(s.operatorLabel)}${st.sub ? `<small class="op-detail">${escapeHtml(st.sub)}</small>` : ''}${isBest ? `<span class="badge">${ICONS.star}${t('bestBadge')}</span>` : ''}</span>
+          <span class="pill" style="background:${st.color};color:${st.textColor}">${escapeHtml(st.label)}</span>
         </button></li>`;
     })
     .join('');
@@ -438,8 +464,12 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
         ? t('areaCommuneSurface')
         : t('areaCommunePop', { n: formatNumber(area!.inhabitants ?? 0) })
       : zone === 'circle'
-        ? t('areaCircle', { d: formatDistance(area!.radiusM ?? APPROX_RADIUS_M) })
+        ? t(speedClasses ? 'areaShare' : 'areaCircle', { d: formatDistance(area!.radiusM ?? APPROX_RADIUS_M) })
         : '';
+  // Débit : légende des couleurs de la carte.
+  const legend = speedClasses
+    ? (['fast', 'medium', 'slow'] as const).map((k) => `<span class="swatch" style="background:${SPEED_COLORS[k].color}"></span>${speedName(k)}`).join(' ')
+    : '';
 
   // La carte complète (site web) ne couvre que la France pour l'instant.
   const fullMap = c === 'fr';
@@ -451,7 +481,7 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
       <ul class="operators">${rows}</ul>
     </section>
     <section class="card">
-      <p class="map-caption">${t('mapCaption')} <strong id="map-layer"></strong></p>
+      <p class="map-caption">${t('mapCaption')} <strong id="map-layer"></strong>${legend ? ` <small class="map-legend">${legend}</small>` : ''}</p>
       <div id="minimap-slot"></div>
       ${fullMap ? `<p class="map-actions"><a id="full-map" class="btn" target="_blank" rel="noopener">${t('fullMap')} ${ICONS.arrow}</a></p>` : ''}
     </section>
@@ -479,14 +509,15 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
       (document.getElementById('full-map') as HTMLAnchorElement).href = url.href;
     }
     const tilesUrl = new URL(layer.tiles.file, tilesBase(c)).href;
-    miniMap?.show(c, layer, tilesUrl, place.lng, place.lat, zone === 'commune' ? 11 : 13).catch(console.error);
+    const fill = speedClasses ? speedFillExpression(speedClasses) : undefined;
+    miniMap?.show(c, layer, tilesUrl, place.lng, place.lat, zone === 'commune' ? 11 : 13, fill).catch(console.error);
   };
   out.querySelectorAll<HTMLButtonElement>('.cell').forEach((b) => b.addEventListener('click', () => select(b.dataset.layer!)));
 
   // Par défaut : la couche du meilleur opérateur (ou du premier), sinon une 4G.
   const defaultOp = best[0] ?? summaries[0];
   const fallback = defaultOp.byTechno['4g'] ?? Object.values(defaultOp.byTechno)[0];
-  select(statuses.get(defaultOp.operator)!.layerId ?? fallback.layer.id);
+  select(views.get(defaultOp.operator)!.layerId ?? fallback.layer.id);
 }
 
 /** En-tête commun d'un résultat : lieu, drapeau, zone évaluée, avertissement « centre de la commune ». */

@@ -30,7 +30,7 @@ interface Case {
   /** Actions enchaînées dans le panneau après son ouverture. */
   actions?: string;
   /** Résultat attendu : titre affiché, note de zone, bandeau « lu sur la page ». */
-  expect?: { titre?: string; note?: RegExp; fromPage?: boolean };
+  expect?: { titre?: string; note?: RegExp; fromPage?: boolean; verdicts?: RegExp };
 }
 
 const CASES: Case[] = [
@@ -52,12 +52,17 @@ const CASES: Case[] = [
     query: `page=${JSON.stringify({ name: 'Piso', address: 'Madrid', lat: 40.4168, lng: -3.7038, precision: 'approximate', radiusM: 1000 })}`,
     expect: { titre: 'Madrid', note: /1 km/, fromPage: true },
   },
-  { name: 'Portugal : adresse (pays choisi)', query: 'pays=pt&q=Rua Augusta 100 Lisboa', expect: { titre: 'Rua Augusta 100' } },
+  { name: 'Portugal : adresse (pays choisi)', query: 'pays=pt&q=Rua Augusta 100 Lisboa', expect: { titre: 'Rua Augusta 100', verdicts: /NOS .*5G · ≥ 1.000 Mbit\/s.*Rapide/ } },
+  {
+    name: 'Portugal : débit lent en zone rurale',
+    query: `page=${JSON.stringify({ name: 'Monte', address: 'Alentejo', lat: 37.407, lng: -8.611, precision: 'exact' })}`,
+    expect: { titre: 'Alentejo', verdicts: /DIGI 4G · < 2 Mbit\/s Lent/ },
+  },
   { name: 'Portugal : pays écrit dans le texte', query: 'q=Rua Augusta 100, Lisboa, Portugal', expect: { titre: 'Rua Augusta 100' } },
   {
     name: 'Portugal : annonce avec coordonnées',
     query: `page=${JSON.stringify({ name: 'Apartamento', address: 'Lisboa', lat: 38.7223, lng: -9.1393, precision: 'approximate', radiusM: 1000 })}`,
-    expect: { titre: 'Lisboa', note: /1 km/, fromPage: true },
+    expect: { titre: 'Lisboa', note: /Part de la zone dans un rayon de 1 km/, fromPage: true },
   },
   { name: 'Belgique : adresse (pays choisi)', query: 'pays=be&q=Rue de la Loi 16 Bruxelles', expect: { titre: 'Rue de la Loi' } },
   { name: 'Belgique : clic droit sur un site .be', query: 'q=Meir 50, Antwerpen&url=https://www.immoweb.be/fr/annonce/1', expect: { titre: 'Meir 50' } },
@@ -156,6 +161,7 @@ try {
       x?.titre && !r.titre?.includes(x.titre) && `titre attendu : « ${x.titre} »`,
       x?.note && !x.note.test(r.note ?? '') && `note attendue : ${x.note}`,
       x?.fromPage !== undefined && x.fromPage !== r.fromPage && `bandeau « lu sur la page » ${x.fromPage ? 'absent' : 'en trop'}`,
+      x?.verdicts && !x.verdicts.test(r.verdicts.join(' | ')) && `verdicts attendus : ${x.verdicts}`,
     ].filter((m): m is string => !!m);
     const ok = !page.problems.length && !mismatch.length && (!r.verdicts.length || r.carte);
     if (!ok) failures++;

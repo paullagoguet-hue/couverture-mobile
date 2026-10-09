@@ -99,7 +99,8 @@ export class MiniMap {
    * Centre la carte sur le point et y affiche la couche demandée.
    * @param tilesUrl URL absolue du fichier PMTiles de la couche
    */
-  async show(country: CountryCode, layer: LayerInfo, tilesUrl: string, lng: number, lat: number, zoom = 13) {
+  /** `fill` : couleur des zones (expression MapLibre) ; par défaut, les niveaux de l'Arcep. */
+  async show(country: CountryCode, layer: LayerInfo, tilesUrl: string, lng: number, lat: number, zoom = 13, fill: unknown = FILL_COLOR_EXPRESSION) {
     this.setCountry(country);
     await this.ready;
     const map = this.map;
@@ -115,7 +116,7 @@ export class MiniMap {
           type: 'fill',
           source: id,
           'source-layer': SOURCE_LAYER,
-          paint: { 'fill-color': FILL_COLOR_EXPRESSION as unknown as ExpressionSpecification, 'fill-opacity': 0.55 },
+          paint: { 'fill-color': fill as ExpressionSpecification, 'fill-opacity': 0.55 },
         },
         firstLabel,
       );

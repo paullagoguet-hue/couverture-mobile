@@ -7,6 +7,7 @@
 import {
   NETWORK_COLORS,
   networkDates,
+  SPEED_COLORS,
   STATUS_COLORS,
   type CountryCode,
   type Manifest,
@@ -93,6 +94,7 @@ export class InfoPage {
             `<li><span class="pill" style="background:${STATUS_COLORS[k].color};color:${STATUS_COLORS[k].textColor}">${t(label)}</span><span>${t(text)}</span></li>`,
         ).join('')}</ul>
         <p class="hint">${t('bestHint', { star: ICONS.star })}</p>
+        <p class="hint"><span class="pill" style="background:${SPEED_COLORS.fast.color};color:${SPEED_COLORS.fast.textColor}">${t('speed_fast')}</span> ${t('legend_speed')}</p>
         <p class="hint"><span class="pill" style="background:${NETWORK_COLORS.most.color};color:${NETWORK_COLORS.most.textColor}">${t('outOf', { n: 3, total: 4 })}</span> ${t('legend_networks')}</p>
       </section>
       <section class="card">

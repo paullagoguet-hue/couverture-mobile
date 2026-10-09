@@ -47,13 +47,21 @@ export function decodeTile(data: ArrayBuffer): TileLayer | null {
   return new VectorTile(new PbfReader(new Uint8Array(data))).layers[SOURCE_LAYER] ?? null;
 }
 
+/** Couverture en un point : couvert ou non, niveau Arcep, classe de débit (Portugal). */
+export interface PointCoverage {
+  covered: boolean;
+  level: LevelCode | null;
+  /** Classe de débit (attribut « classe » des tuiles, cf. Manifest.speed_classes) ; null sans débit publié. */
+  classe: number | null;
+}
+
 /** Niveau au point (px, py), en unités d'extent 4096, dans une couche décodée. */
-export function pointCoverage(layer: TileLayer | null, px: number, py: number): { covered: boolean; level: LevelCode | null } {
-  if (!layer) return { covered: false, level: null };
+export function pointCoverage(layer: TileLayer | null, px: number, py: number): PointCoverage {
+  if (!layer) return { covered: false, level: null, classe: null };
   // L'extent annoncé par la couche fait foi (4096 par défaut avec tippecanoe).
   const scale = layer.extent / 4096;
   const qx = px * scale, qy = py * scale;
-  let best: { covered: boolean; level: LevelCode | null } = { covered: false, level: null };
+  let best: PointCoverage = { covered: false, level: null, classe: null };
   for (let i = 0; i < layer.length; i++) {
     const f = layer.feature(i);
     if (f.type !== 3) continue;
@@ -61,8 +69,9 @@ export function pointCoverage(layer: TileLayer | null, px: number, py: number): 
     if (qx < x0 || qx > x1 || qy < y0 || qy > y1) continue;
     if (!pointInRings(qx, qy, f.loadGeometry())) continue;
     const level = (f.properties.niveau as LevelCode | undefined) ?? null;
-    // Les niveaux sont disjoints ; par prudence on garde le meilleur si deux se chevauchent.
-    if (!best.covered || levelRank(level) < levelRank(best.level)) best = { covered: true, level };
+    const classe = typeof f.properties.classe === 'number' ? f.properties.classe : null;
+    // Niveaux et classes sont disjoints ; par prudence on garde le meilleur si deux se chevauchent.
+    if (!best.covered || levelRank(level) < levelRank(best.level) || (classe ?? 0) > (best.classe ?? 0)) best = { covered: true, level, classe };
   }
   return best;
 }
@@ -105,6 +114,8 @@ export interface AreaStats {
   samples: number;
   /** Part des points par niveau : « TBC », « BC », « CL », « covered » (sans niveau), « none ». */
   shares: Record<string, number>;
+  /** Cercle, couches à débit : classe en chaque point échantillonné (0 = non couvert), dans l'ordre de pointsAround. */
+  classes?: number[];
 }
 
 export interface LayerCoverage {
@@ -113,6 +124,8 @@ export interface LayerCoverage {
   covered: boolean;
   /** Niveau Arcep (couches à niveaux) ; pour une zone, le niveau dominant. */
   level: LevelCode | null;
+  /** Classe de débit au point (couches à débit) ; pour une zone, cf. area.classes. */
+  classe?: number | null;
   /** Présent quand la couverture a été évaluée sur une zone et non en un point. */
   area?: AreaStats;
 }
@@ -182,11 +195,18 @@ export class CoverageReader {
     // Niveau dominant ; à égalité, le meilleur (l'ordre TBC > BC > CL > covered > none).
     const order = ['TBC', 'BC', 'CL', 'covered', 'none'];
     const dominant = order.reduce((a, b) => ((counts[b] ?? 0) > (counts[a] ?? 0) ? b : a));
+    const withSpeed = results.some((r) => r.classe !== null);
     return {
       layer,
       covered: dominant !== 'none',
       level: dominant === 'none' || dominant === 'covered' ? null : (dominant as LevelCode),
-      area: { kind: 'circle', radiusM, samples: results.length, shares },
+      area: {
+        kind: 'circle',
+        radiusM,
+        samples: results.length,
+        shares,
+        ...(withSpeed ? { classes: results.map((r) => (r.covered ? (r.classe ?? 1) : 0)) } : {}),
+      },
     };
   }
 

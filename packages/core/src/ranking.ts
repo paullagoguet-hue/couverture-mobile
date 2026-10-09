@@ -49,9 +49,13 @@ const TIE = 0.05;
  * Critère : verdict (5G > 5G partielle > 4G > 4G partielle, cf. status.ts),
  * puis, à verdict égal, qualité de la 4G (niveaux Arcep).
  */
-export function bestOperators(summaries: OperatorSummary[]): OperatorSummary[] {
+export function bestOperators(
+  summaries: OperatorSummary[],
+  /** Note (plus grand = meilleur) et départage (plus petit = meilleur) ; par défaut, verdict 5G/4G puis niveaux 4G. */
+  rate: (s: OperatorSummary) => { score: number; quality: number } = (s) => ({ score: statusScore(operatorStatus(s)), quality: coverageScore(s.byTechno['4g']) }),
+): OperatorSummary[] {
   const scored = summaries
-    .map((s) => ({ s, score: statusScore(operatorStatus(s)), quality: coverageScore(s.byTechno['4g']) }))
+    .map((s) => ({ s, ...rate(s) }))
     .filter((x) => x.score > 0);
   if (!scored.length) return [];
   const better = (a: typeof scored[number], b: typeof scored[number]) =>
