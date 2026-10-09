@@ -97,7 +97,16 @@ const manifests = {
     page_action: { default_title: 'Vérifier la connexion de ce logement', default_icon: detectedIcons, show_matches: LODGING_MATCHES },
     sidebar_action: { default_panel: 'panel.html', default_title: 'Vérifier la couverture réseau', open_at_install: false },
     browser_specific_settings: {
-      gecko: { id: '{7c3e9a52-4b1d-4f0e-9d8a-2f6b1e5c0a13}', strict_min_version: '128.0' },
+      gecko: {
+        id: '{7c3e9a52-4b1d-4f0e-9d8a-2f6b1e5c0a13}',
+        // Consentement intégré à Firefox pour les données transmises : 140+.
+        strict_min_version: '140.0',
+        // Données qui quittent le navigateur (catégories Mozilla), toutes nécessaires au service :
+        //  - websiteContent : texte sélectionné / adresse lue sur la page -> géocodeur IGN ;
+        //  - searchTerms    : adresse tapée dans le panneau -> géocodeur IGN ;
+        //  - locationInfo   : position du lieu, déductible des tuiles demandées -> hébergement des tuiles.
+        data_collection_permissions: { required: ['websiteContent', 'searchTerms', 'locationInfo'] },
+      },
     },
   },
 };

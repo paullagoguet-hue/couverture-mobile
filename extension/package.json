@@ -7,13 +7,16 @@
   "scripts": {
     "build": "node build.ts",
     "typecheck": "tsc --noEmit",
-    "icons": "node scripts/make-icons.ts"
+    "icons": "node scripts/make-icons.ts",
+    "test:e2e": "node scripts/e2e-edge.ts",
+    "lint:firefox": "web-ext lint --source-dir dist/firefox"
   },
   "devDependencies": {
     "@types/chrome": "^0.3.4",
     "@types/node": "^26.6.4",
     "typescript": "^7.0.2",
-    "vite": "^8.3.4"
+    "vite": "^8.3.4",
+    "web-ext": "^10.7.0"
   },
   "dependencies": {
     "@couverture/core": "*",
