@@ -1,0 +1,134 @@
+# Construit les tuiles PMTiles de couverture mobile pour l'Espagne, à partir
+# de la carte du ministère espagnol (cf. data-pipeline/es/).
+#
+# Lancement manuel : onglet Actions > « Données de couverture (Espagne) » > Run workflow.
+# Une tâche par techno (4G, 5G) ; chacune produit les 4 opérateurs.
+name: Données de couverture (Espagne)
+
+on:
+  workflow_dispatch:
+    inputs:
+      technos:
+        description: "Technos (séparées par des espaces)"
+        required: false
+        default: "4g 5g"
+      bbox:
+        description: "Essai sur une zone : lon_min,lat_min,lon_max,lat_max (vide = toute l'Espagne)"
+        required: false
+        default: ""
+      min_zoom:
+        description: "Zoom minimum des tuiles"
+        required: false
+        default: "10"
+      max_zoom:
+        description: "Zoom maximum des tuiles"
+        required: false
+        default: "12"
+      timeout_minutes:
+        description: "Durée max d'une techno (min)"
+        required: false
+        default: "330"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-data-es-${{ inputs.technos }}-${{ inputs.bbox }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-24.04
+    outputs:
+      technos: ${{ steps.plan.outputs.technos }}
+    steps:
+      - id: plan
+        env:
+          TECHNOS: ${{ inputs.technos }}
+        run: echo "technos=$(jq -cn --arg t "$TECHNOS" '$t | split(" ") | map(select(length > 0))')" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Tuiles Espagne ${{ matrix.techno }}
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ fromJSON(inputs.timeout_minutes) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        techno: ${{ fromJSON(needs.plan.outputs.technos) }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Cache des outils compilés (tippecanoe, pmtiles)
+        uses: actions/cache@v6
+        with:
+          path: data-pipeline/.tools
+          key: tools-ubuntu-24.04-${{ hashFiles('data-pipeline/env.sh') }}
+
+      - name: Dépendances
+        run: bash data-pipeline/install_deps.sh
+
+      - name: Choix du disque de travail
+        run: |
+          df -h / /mnt
+          if [ "$(df --output=avail /mnt | tail -1)" -gt "$(df --output=avail "$RUNNER_TEMP" | tail -1)" ]; then
+            sudo mkdir -p /mnt/work && sudo chown "$USER" /mnt/work
+            echo "WORK_DIR=/mnt/work" >> "$GITHUB_ENV"
+          else
+            echo "WORK_DIR=$RUNNER_TEMP/work" >> "$GITHUB_ENV"
+          fi
+
+      - name: Construction
+        env:
+          TILES_DIR: ${{ github.workspace }}/tiles
+          BBOX: ${{ inputs.bbox }}
+          MIN_ZOOM: ${{ inputs.min_zoom }}
+          MAX_ZOOM: ${{ inputs.max_zoom }}
+        run: bash data-pipeline/es/build_es.sh "${{ matrix.techno }}"
+
+      - name: Résumé
+        env:
+          TECHNO: ${{ matrix.techno }}
+        run: |
+          {
+            echo "### Espagne $TECHNO"
+            echo "Téléchargement : \`$(jq -c '{expected, features, by_operator, unknown_cif, seconds, data_last_edit}' tiles/es/es-$TECHNO.download.json)\`"
+            echo
+            echo "| couche | Mo | tuiles z12 | max z12 (Ko) |"
+            echo "|---|---:|---:|---:|"
+            for s in tiles/es/*-$TECHNO.stats.json; do
+              id=$(basename "$s" .stats.json)
+              echo "| $id | $(jq -r .file_mb "$s") | $(jq -r '.by_zoom["12"].tiles // "-"' "$s") | $(jq -r '.by_zoom["12"].max_kb // "-"' "$s") |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tiles-es-${{ matrix.techno }}
+          path: tiles/es/
+          compression-level: 0  # PMTiles déjà compressé
+          retention-days: 7
+
+  manifest:
+    name: Manifeste Espagne
+    needs: build
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: tiles-es-*
+          merge-multiple: true
+          path: es
+      - name: Manifeste
+        run: |
+          (cd data-pipeline/es && python3 manifest_es.py "$GITHUB_WORKSPACE/es")
+          echo "### Espagne : $(jq '.layers | length' es/manifest.json) couche(s), $(du -sh es | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tiles-es
+          path: es/
+          compression-level: 0
+          retention-days: 14
