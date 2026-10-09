@@ -12,6 +12,7 @@
  *   { "titre": "…", "texte": "…", "lien": "https://…", "image": "<même origine>", "actif": true }
  */
 import { ENCART_URL } from './config.ts';
+import { t } from './i18n.ts';
 
 interface Encart {
   titre?: string;
@@ -67,8 +68,8 @@ export async function fillEncart(slot: HTMLElement): Promise<void> {
 
   const aside = document.createElement('aside');
   aside.className = 'encart';
-  aside.setAttribute('aria-label', 'Publicité');
-  const mention = Object.assign(document.createElement('span'), { className: 'encart-mention', textContent: 'Publicité' });
+  aside.setAttribute('aria-label', t('ad'));
+  const mention = Object.assign(document.createElement('span'), { className: 'encart-mention', textContent: t('ad') });
   const link = Object.assign(document.createElement('a'), { href: encart.lien, target: '_blank', rel: 'noopener sponsored', referrerPolicy: 'no-referrer' });
   if (encart.image) {
     link.append(Object.assign(document.createElement('img'), { src: encart.image, alt: '', loading: 'lazy' }));

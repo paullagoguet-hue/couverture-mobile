@@ -13,6 +13,7 @@
  */
 import { api } from './browser.ts';
 import { extractStructuredAddress, isLodgingUrl, LODGING_RULES } from './lodging.ts';
+import { initLang, t } from './i18n.ts';
 import { CARD_ENABLED_KEY, type CheckPageMessage, type CheckPageResponse } from './messages.ts';
 
 const HOST_ID = 'verifier-couverture-reseau-carte';
@@ -58,20 +59,21 @@ async function showCard() {
   // Non activée par l'utilisateur, ou déjà affichée (navigation interne du site).
   const settings = await api.storage.local.get(CARD_ENABLED_KEY);
   if (settings[CARD_ENABLED_KEY] !== true || document.getElementById(HOST_ID)) return;
+  await initLang();
 
   const host = Object.assign(document.createElement('div'), { id: HOST_ID });
   const root = host.attachShadow({ mode: 'closed' });
   root.innerHTML = `<style>${STYLE}</style>
-    <aside class="card" role="complementary" aria-label="Vérifier la couverture réseau">
+    <aside class="card" role="complementary" aria-label="${t('extName')}">
       ${ICON_SVG}
       <div>
-        <p class="title">Vérifier la connexion mobile de ce logement ?</p>
+        <p class="title">${t('cardTitle')}</p>
         <div class="actions">
-          <button class="check" type="button">Vérifier</button>
-          <button class="never" type="button">Ne plus proposer</button>
+          <button class="check" type="button">${t('cardCheck')}</button>
+          <button class="never" type="button">${t('cardNever')}</button>
         </div>
       </div>
-      <button class="close" type="button" aria-label="Fermer" title="Fermer">×</button>
+      <button class="close" type="button" aria-label="${t('cardClose')}" title="${t('cardClose')}">×</button>
       <p class="msg" role="status"></p>
     </aside>`;
   document.documentElement.append(host);
@@ -96,7 +98,7 @@ async function showCard() {
       response = (await api.runtime.sendMessage(message)) as CheckPageResponse | undefined;
     } catch {
       // Extension mise à jour ou rechargée depuis l'ouverture de la page : ce script est orphelin.
-      msg.textContent = "L'extension a été mise à jour : rechargez la page pour vérifier ce logement.";
+      msg.textContent = t('cardUpdated');
       return;
     } finally {
       check.disabled = false;
@@ -105,7 +107,7 @@ async function showCard() {
       host.remove();
     } else {
       // Firefox n'autorise l'ouverture de la barre latérale que depuis l'interface du navigateur.
-      msg.textContent = "Résultat prêt : cliquez sur l'icône orange de l'extension, dans la barre d'adresse, pour l'afficher.";
+      msg.textContent = t('cardReady');
     }
   });
 }

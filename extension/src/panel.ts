@@ -25,7 +25,6 @@ import {
   bestOperators,
   cleanAddress,
   communeToCoverage,
-  COUNTRIES,
   COUNTRY_CODES,
   countryAt,
   countryFromText,
@@ -51,10 +50,12 @@ import { api, PENDING_KEY, type PendingQuery } from './browser.ts';
 import { CARD_ENABLED_KEY } from './messages.ts';
 import { SITE_URL, TILES_BASE_URL } from './config.ts';
 import { fillEncart } from './encart.ts';
+import { formatNumber, initLang, LANG_KEY, LANG_LABELS, LANGS, lang, locale, t, translatePage, type Lang } from './i18n.ts';
 import { FLAGS, HERO_SVG, ICONS } from './illustrations.ts';
 import { InfoPage } from './info.ts';
 import { MiniMap } from './minimap.ts';
 import { SearchBox } from './search.ts';
+import { statusDetail, statusLabel } from './verdict-text.ts';
 
 const out = document.getElementById('result')!;
 let currentRun: AbortController | undefined;
@@ -63,8 +64,8 @@ let currentRun: AbortController | undefined;
 let country: CountryCode = 'fr';
 const COUNTRY_KEY = 'country';
 
-/** Source citée sous chaque résultat. */
-const SOURCE_LABEL: Record<CountryCode, string> = { fr: 'Arcep', es: 'ministère espagnol du Numérique' };
+/** Nom du pays dans la langue de l'interface. */
+const countryName = (c: CountryCode) => t(c === 'fr' ? 'country_fr' : 'country_es');
 
 const readers = new Map<CountryCode, CoverageReader>();
 const manifests = new Map<CountryCode, Promise<Manifest>>();
@@ -102,8 +103,8 @@ const escapeHtml = (s: string) =>
 /** Rayon par défaut si la page ne précise pas le sien (cf. radiusFor dans lodging.ts). */
 const APPROX_RADIUS_M = 1000;
 
-/** « 300 m », « 1 km », « 2 km ». */
-const formatDistance = (m: number) => (m >= 1000 ? `${(m / 1000).toLocaleString('fr-FR')} km` : `${m} m`);
+/** « 300 m », « 1 km », « 1,5 km ». */
+const formatDistance = (m: number) => (m >= 1000 ? `${(m / 1000).toLocaleString(locale())} km` : `${m} m`);
 
 /** Contexte d'une recherche : propre à elle, jamais partagé avec la suivante. */
 interface Run {
@@ -184,19 +185,19 @@ function showWelcome() {
   currentRun?.abort();
   show(`<section class="welcome">
     ${HERO_SVG}
-    <h2>Votre téléphone captera-t-il ?</h2>
-    <p class="lead">La 4G et la 5G des opérateurs, en France et en Espagne.</p>
+    <h2>${t('welcomeTitle')}</h2>
+    <p class="lead">${t('welcomeLead')}</p>
     <div class="card">
       <ul class="steps">
-        <li><span class="bubble">${ICONS.search}</span><div><strong>Tapez une adresse</strong></div></li>
-        <li><span class="bubble">${ICONS.select}</span><div><strong>Ou sélectionnez-la sur une page</strong>
-          <span>puis clic droit</span></div></li>
-        <li><span class="bubble">${ICONS.house}</span><div><strong>Sur une annonce de logement</strong>
-          <span>cliquez sur l'icône orange</span></div></li>
+        <li><span class="bubble">${ICONS.search}</span><div><strong>${t('stepType')}</strong></div></li>
+        <li><span class="bubble">${ICONS.select}</span><div><strong>${t('stepSelect')}</strong>
+          <span>${t('stepSelectHint')}</span></div></li>
+        <li><span class="bubble">${ICONS.house}</span><div><strong>${t('stepListing')}</strong>
+          <span>${t('stepListingHint')}</span></div></li>
       </ul>
     </div>
     <div class="card">
-      <h3>Essayer</h3>
+      <h3>${t('tryTitle')}</h3>
       <div class="examples">${EXAMPLES.map(([e, c]) => `<button type="button" data-country="${c}">${escapeHtml(e)}</button>`).join('')}</div>
     </div>
   </section>`);
@@ -225,7 +226,7 @@ async function run(text: string, options: RunOptions = {}) {
   const { note = '', radiusM, where = country } = options;
   search.setText(text);
   const r = startRun(note, radiusM);
-  loading(`Recherche de « ${escapeHtml(text)} »…`, r.note);
+  loading(t('searching', { q: escapeHtml(text) }), r.note);
   const anyCountry = where === 'any';
   const others = COUNTRY_CODES.filter((c) => c !== where);
   try {
@@ -237,11 +238,11 @@ async function run(text: string, options: RunOptions = {}) {
       message(
         {
           icon: ICONS.pin,
-          title: `Adresse introuvable${anyCountry ? '' : ` (${COUNTRIES[where].label})`}`,
-          body: `<p>Essayez avec la ville ou le code postal.</p>`,
+          title: anyCountry ? t('notFound') : t('notFoundIn', { country: countryName(where) }),
+          body: `<p>${t('notFoundHint')}</p>`,
           action: anyCountry
             ? undefined
-            : others.map((c) => `<button class="btn" type="button" data-country="${c}">${FLAGS[c]}Chercher : ${COUNTRIES[c].label}</button>`).join(' '),
+            : others.map((c) => `<button class="btn" type="button" data-country="${c}">${FLAGS[c]}${t('searchIn', { country: countryName(c) })}</button>`).join(' '),
         },
         r.note,
       );
@@ -258,7 +259,7 @@ async function run(text: string, options: RunOptions = {}) {
     if (isUnambiguous(results)) return await showCoverage(results[0], r);
     // Plusieurs lieux plausibles : l'utilisateur choisit.
     show(
-      `<div class="card"><strong>Lequel ?</strong>
+      `<div class="card"><strong>${t('which')}</strong>
         <ul class="choices">${results
           .map((p, i) => `<li><button type="button" data-i="${i}">${ICONS.pin}<span>${escapeHtml(p.label)}<small>${escapeHtml(p.context)}</small></span></button></li>`)
           .join('')}</ul></div>`,
@@ -278,10 +279,10 @@ async function run(text: string, options: RunOptions = {}) {
       {
         icon: ICONS.alert,
         error: true,
-        title: 'Recherche impossible',
-        body: `<p>Vérifiez votre connexion.</p>
+        title: t('searchFailed'),
+        body: `<p>${t('checkConnection')}</p>
                <p class="detail">${escapeHtml((err as Error).message)}</p>`,
-        action: `<button class="btn" id="retry" type="button">${ICONS.retry}Réessayer</button>`,
+        action: `<button class="btn" id="retry" type="button">${ICONS.retry}${t('retry')}</button>`,
       },
       r.note,
     );
@@ -292,7 +293,7 @@ async function run(text: string, options: RunOptions = {}) {
 /** Lit et affiche la couverture ; affiche une erreur claire plutôt que de rester bloqué. */
 async function showCoverage(place: GeocodeResult, r: Run) {
   if (r.signal.aborted) return;
-  loading(`Lecture de la couverture à ${escapeHtml(place.label)}…`, r.note);
+  loading(t('reading', { place: escapeHtml(place.label) }), r.note);
   const c = place.country;
   const signal = AbortSignal.any([r.signal, AbortSignal.timeout(COVERAGE_TIMEOUT_MS)]);
   try {
@@ -320,10 +321,10 @@ async function showCoverage(place: GeocodeResult, r: Run) {
       {
         icon: ICONS.noSignal,
         error: true,
-        title: 'Couverture indisponible',
-        body: `<p>${timedOut ? 'Le serveur ne répond pas.' : 'Serveur injoignable.'} Réessayez dans un instant.</p>
+        title: t('coverageUnavailable'),
+        body: `<p>${timedOut ? t('serverNoResponse') : t('serverUnreachable')} ${t('retrySoon')}</p>
                <p class="detail">${escapeHtml(new URL(TILES_BASE_URL).origin)} · ${escapeHtml((err as Error).message)}</p>`,
-        action: `<button class="btn" id="retry" type="button">${ICONS.retry}Réessayer</button>`,
+        action: `<button class="btn" id="retry" type="button">${ICONS.retry}${t('retry')}</button>`,
       },
       r.note,
     );
@@ -346,27 +347,27 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
     .map((s) => {
       const st = statuses.get(s.operator)!;
       const isBest = bestIds.has(s.operator);
-      return `<li><button type="button" class="cell${isBest ? ' best' : ''}" data-layer="${st.layerId ?? ''}" title="${escapeHtml(st.detail)}"${st.layerId ? '' : ' disabled'}>
-          <span class="op-name">${escapeHtml(s.operatorLabel)}${isBest ? `<span class="badge">${ICONS.star}meilleur ici</span>` : ''}</span>
-          <span class="pill" style="background:${st.color};color:${st.textColor}">${escapeHtml(st.label)}</span>
+      return `<li><button type="button" class="cell${isBest ? ' best' : ''}" data-layer="${st.layerId ?? ''}" title="${escapeHtml(statusDetail(s, st))}"${st.layerId ? '' : ' disabled'}>
+          <span class="op-name">${escapeHtml(s.operatorLabel)}${isBest ? `<span class="badge">${ICONS.star}${t('bestBadge')}</span>` : ''}</span>
+          <span class="pill" style="background:${st.color};color:${st.textColor}">${escapeHtml(statusLabel(st))}</span>
         </button></li>`;
     })
     .join('');
 
   const bestText = !best.length
-    ? 'Ni 4G ni 5G ici.'
+    ? t('noNetworkHere')
     : allTied
-      ? 'Même couverture pour tous les opérateurs.'
-      : `Meilleur : <strong>${best.map((b) => escapeHtml(b.operatorLabel)).join(', ')}</strong>`;
+      ? t('allSame')
+      : t('best', { ops: `<strong>${best.map((b) => escapeHtml(b.operatorLabel)).join(', ')}</strong>` });
 
   const area = coverage[0]?.area;
   const areaNote =
     zone === 'commune'
       ? area!.basis === 'surface'
-        ? 'Taux de 5G calculé sur toute la commune'
-        : `Taux de 5G calculé sur les ${(area!.inhabitants ?? 0).toLocaleString('fr-FR')} habitants de la commune`
+        ? t('areaCommuneSurface')
+        : t('areaCommunePop', { n: formatNumber(area!.inhabitants ?? 0) })
       : zone === 'circle'
-        ? `Taux de 5G dans un rayon de ${formatDistance(area!.radiusM ?? APPROX_RADIUS_M)}`
+        ? t('areaCircle', { d: formatDistance(area!.radiusM ?? APPROX_RADIUS_M) })
         : '';
 
   // La carte complète (site web) ne couvre que la France pour l'instant.
@@ -374,10 +375,10 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
 
   show(
     `<section class="card">
-      <div class="place-head">${ICONS.pin}<h2>${escapeHtml(place.label)}</h2><span class="flag" title="${COUNTRIES[c].label}">${FLAGS[c]}</span></div>
+      <div class="place-head">${ICONS.pin}<h2>${escapeHtml(place.label)}</h2><span class="flag" title="${countryName(c)}">${FLAGS[c]}</span></div>
       ${areaNote ? `<p class="area-note">${areaNote}</p>` : ''}
       ${['municipality', 'locality'].includes(place.type) && !r.note && zone !== 'commune' // le bandeau de la page le dit déjà
-        ? '<p class="warning">Couverture au centre de la commune</p>'
+        ? `<p class="warning">${t('communeCenter')}</p>`
         : ''}
     </section>
     <section class="card">
@@ -385,11 +386,11 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
       <ul class="operators">${rows}</ul>
     </section>
     <section class="card">
-      <p class="map-caption">Carte : <strong id="map-layer"></strong></p>
+      <p class="map-caption">${t('mapCaption')} <strong id="map-layer"></strong></p>
       <div id="minimap-slot"></div>
-      ${fullMap ? `<p class="map-actions"><a id="full-map" class="btn" target="_blank" rel="noopener">Voir sur la carte complète ${ICONS.arrow}</a></p>` : ''}
+      ${fullMap ? `<p class="map-actions"><a id="full-map" class="btn" target="_blank" rel="noopener">${t('fullMap')} ${ICONS.arrow}</a></p>` : ''}
     </section>
-    <p class="source">Couverture théorique, source ${SOURCE_LABEL[c]} · <button type="button" class="link" data-info>Infos</button></p>
+    <p class="source">${t('sourceLine', { source: t(c === 'fr' ? 'source_fr' : 'source_es') })} · <button type="button" class="link" data-info>${t('infoLink')}</button></p>
     <div id="encart-slot"></div>`,
     r.note,
   );
@@ -473,15 +474,15 @@ function handlePending(p: PendingQuery) {
     currentRun?.abort();
     message({
       icon: ICONS.house,
-      title: 'Ouvrez la page du logement',
-      body: `<p>Puis cliquez sur l'icône orange.</p>`,
+      title: t('openListing'),
+      body: `<p>${t('thenClickIcon')}</p>`,
     });
   } else if (p.kind === 'page-error') {
     currentRun?.abort();
     message({
       icon: ICONS.select,
-      title: 'Adresse non trouvée sur la page',
-      body: `<p>Sélectionnez-la puis clic droit, ou tapez-la ci-dessus.</p>`,
+      title: t('noAddress'),
+      body: `<p>${t('noAddressHint')}</p>`,
     });
     search.focus();
   } else {
@@ -491,10 +492,10 @@ function handlePending(p: PendingQuery) {
     // Précision publiée par le site : on la dit clairement.
     const precisionNote = {
       exact: '',
-      approximate: '<br />Adresse exacte non publiée par le site',
-      commune: '<br />Seule la commune est publiée par le site',
+      approximate: `<br />${t('approxNote')}`,
+      commune: `<br />${t('communeOnly')}`,
     }[p.precision ?? 'exact'];
-    const note = `Lu sur la page : ${what}${precisionNote}`;
+    const note = t('readOnPage', { what }) + precisionNote;
     if (p.lat !== undefined && p.lng !== undefined) {
       // Coordonnées publiées par la page : pas besoin de géocoder ; le pays se déduit du point.
       search.setText(p.address ?? p.name ?? '');
@@ -504,8 +505,8 @@ function handlePending(p: PendingQuery) {
         message(
           {
             icon: ICONS.pin,
-            title: 'Pays non couvert',
-            body: `<p>L'extension couvre la France et l'Espagne.</p>`,
+            title: t('countryNotCovered'),
+            body: `<p>${t('coversCountries')}</p>`,
           },
           note,
         );
@@ -522,7 +523,7 @@ function handlePending(p: PendingQuery) {
       const published = countryFromText(p.country);
       if (published === 'other') {
         currentRun?.abort();
-        message({ icon: ICONS.pin, title: 'Pays non couvert', body: `<p>L'extension couvre la France et l'Espagne.</p>` }, note);
+        message({ icon: ICONS.pin, title: t('countryNotCovered'), body: `<p>${t('coversCountries')}</p>` }, note);
         return;
       }
       if (published) setCountry(published);
@@ -541,6 +542,11 @@ async function start() {
   const testCountry = params.get('pays');
   const testQuery = params.get('q');
   const testPage = params.get('page');
+
+  // Langue choisie (ou du navigateur) avant tout affichage ; ?lang=en pour les tests.
+  await initLang(params.get('lang'));
+  translatePage();
+  setupLanguageSelect();
 
   try {
     const saved = (await api?.storage.local.get(COUNTRY_KEY))?.[COUNTRY_KEY];
@@ -580,8 +586,20 @@ void start();
 
 document.getElementById('info-open')!.addEventListener('click', () => (info.visible ? info.hide() : void info.show()));
 
-// Version affichée dans la page d'infos : permet de vérifier que la bonne version est chargée.
-document.getElementById('version')!.textContent = `version ${api?.runtime.getManifest().version ?? 'test'}`;
+// Page d'infos : choix de la langue, et version (pour vérifier que la bonne version est chargée).
+function setupLanguageSelect() {
+  document.getElementById('version')!.textContent = t('version', { v: api?.runtime.getManifest().version ?? 'test' });
+  const select = document.getElementById('lang-select') as HTMLSelectElement;
+  select.replaceChildren(...LANGS.map((l) => new Option(LANG_LABELS[l], l, false, l === lang())));
+  select.addEventListener('change', async () => {
+    try {
+      await api?.storage.local.set({ [LANG_KEY]: select.value as Lang });
+    } catch {
+      // stockage indisponible : la langue ne sera pas retenue
+    }
+    location.reload(); // tous les textes, y compris ceux déjà affichés
+  });
+}
 
 // Proposition de vérification sur les pages d'annonces : désactivée par défaut,
 // activée par l'utilisateur ici (et désactivable depuis l'encadré).

@@ -51,6 +51,12 @@ const CASES: Case[] = [
     query: `page=${JSON.stringify({ name: 'Piso', address: 'Madrid', lat: 40.4168, lng: -3.7038, precision: 'approximate', radiusM: 1000 })}`,
     expect: { titre: 'Madrid', note: /1 km/, fromPage: true },
   },
+  { name: 'Anglais : commune', query: 'lang=en&q=Bonneval-sur-Arc', expect: { titre: 'Bonneval-sur-Arc', note: /250 residents/ } },
+  {
+    name: 'Espagnol : annonce à Madrid',
+    query: `lang=es&page=${JSON.stringify({ name: 'Piso', address: 'Madrid', lat: 40.4168, lng: -3.7038, precision: 'approximate', radiusM: 1000 })}`,
+    expect: { titre: 'Madrid', note: /radio de 1 km/, fromPage: true },
+  },
   {
     name: 'Clics rapprochés : France puis Espagne',
     actions: type('10 Rue de Rivoli 75004 Paris') + whileReading + fromCard({ name: 'Piso', address: 'Madrid', lat: 40.4168, lng: -3.7038, precision: 'approximate', radiusM: 1000 }),
@@ -78,7 +84,9 @@ console.log(`Extension chargée : ${browser.extensionId}\n`);
 let failures = 0;
 try {
   for (const c of CASES) {
-    const page = await browser.open(c.query ? `panel.html?${c.query.replace(/ /g, '%20')}` : 'panel.html');
+    // Français sauf indication contraire (la langue du navigateur de test peut varier).
+    const query = /(^|&)lang=/.test(c.query ?? '') ? c.query! : [c.query, 'lang=fr'].filter(Boolean).join('&');
+    const page = await browser.open(`panel.html?${query.replace(/ /g, '%20')}`);
     if (c.actions) {
       await sleep(1500);
       await page.evaluate(`(async () => { ${c.actions} })()`);

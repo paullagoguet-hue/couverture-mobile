@@ -13,6 +13,7 @@
 import { api, pageAction, PENDING_KEY, sidebarAction, type PendingBody } from './browser.ts';
 import { ICON_SIZES, iconPixels } from './icon.ts';
 import { extractStructuredAddress, isLodgingUrl, LODGING_MATCHES, LODGING_RULES, LODGING_SITES, urlRegexFor } from './lodging.ts';
+import { initLang, LANG_KEY, t } from './i18n.ts';
 import type { CheckPageMessage, CheckPageResponse } from './messages.ts';
 
 const MENU_SELECTION = 'verifier-couverture';
@@ -22,15 +23,16 @@ api.runtime.onInstalled.addListener(async () => {
   // À la mise à jour (ou au rechargement en développement), les entrées existent
   // déjà : on repart de zéro pour éviter les erreurs d'identifiant en double.
   await api.contextMenus.removeAll();
+  await initLang();
   api.contextMenus.create({
     id: MENU_SELECTION,
-    title: 'Vérifier la couverture réseau',
+    title: t('menuSelection'),
     contexts: ['selection'],
   });
   // N'apparaît que sur les pages d'hébergement reconnues (filtrage fait par le navigateur).
   api.contextMenus.create({
     id: MENU_PAGE,
-    title: 'Vérifier la connexion de ce logement',
+    title: t('menuPage'),
     contexts: ['page'],
     documentUrlPatterns: LODGING_MATCHES,
   });
@@ -106,6 +108,17 @@ async function checkLodgingPage(tab: chrome.tabs.Tab) {
   }
   sendToPanel(found ? { kind: 'page', ...found } : { kind: 'page-error' });
 }
+
+// Langue changée dans le panneau : menus et titre de l'icône suivent.
+api.storage.local.onChanged.addListener(async (changes) => {
+  if (!changes[LANG_KEY]) return;
+  await initLang();
+  await Promise.all([
+    api.contextMenus.update(MENU_SELECTION, { title: t('menuSelection') }),
+    api.contextMenus.update(MENU_PAGE, { title: t('menuPage') }),
+    api.action.setTitle({ title: t('extName') }),
+  ]).catch(console.error);
+});
 
 // Clic droit sur une sélection, ou sur une page d'hébergement.
 api.contextMenus.onClicked.addListener((info, tab) => {

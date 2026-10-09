@@ -1,23 +1,22 @@
 /**
  * Page « Infos » du panneau : lecture des couleurs, zone évaluée, limites,
- * sources et dates des données, confidentialité, réglage de l'encadré.
+ * sources et dates des données, confidentialité, réglages (langue, encadré).
  * Affichée à la place du résultat, qui reste intact derrière (mini-carte
  * comprise) : « Retour » le réaffiche tel quel.
  */
 import { STATUS_COLORS, type CountryCode, type Manifest, type StatusKind } from '@couverture/core';
 
 import { PRIVACY_URL } from './config.ts';
+import { formatDate, t, type MessageKey } from './i18n.ts';
 import { ICONS } from './illustrations.ts';
 
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-
-const LEGEND: [StatusKind, string, string][] = [
-  ['5g', '5G', 'la 5G partout dans la zone'],
-  ['5g-partial', '5G partielle', 'la 5G sur plus de la moitié de la zone (en %)'],
-  ['4g', '4G', 'pas de 5G, ou sur moins de la moitié de la zone'],
-  ['4g-partial', '4G partielle', 'la 4G sur moins de la moitié de la zone'],
-  ['none', 'Pas de réseau', 'ni 4G ni 5G'],
+/** Couleur, libellé du badge, explication. */
+const LEGEND: [StatusKind, MessageKey, MessageKey][] = [
+  ['5g', 'status_5g', 'legend_5g'],
+  ['5g-partial', 'status_5gPartialShort', 'legend_5gPartial'],
+  ['4g', 'status_4g', 'legend_4g'],
+  ['4g-partial', 'status_4gPartial', 'legend_4gPartial'],
+  ['none', 'status_none', 'legend_none'],
 ];
 
 export class InfoPage {
@@ -53,57 +52,57 @@ export class InfoPage {
 
   private render(manifests: Partial<Record<CountryCode, Manifest>>): string {
     // La 4G et la 5G ne sont pas forcément publiées à la même date.
-    const dates = (manifest: Manifest | undefined, prefix: string) => {
+    const dates = (manifest: Manifest | undefined, key: 'dateAt' | 'datePublished') => {
       const text = ['4g', '5g']
-        .map((t) => manifest?.layers.find((l) => l.techno === t))
+        .map((techno) => manifest?.layers.find((l) => l.techno === techno))
         .filter((l) => l !== undefined)
-        .map((l) => `${l.techno.toUpperCase()} ${prefix} ${formatDate(l.date)}`)
+        .map((l) => t(key, { techno: l.techno.toUpperCase(), date: formatDate(l.date) }))
         .join(', ');
       return text ? ` (${text})` : '';
     };
     return `
       <section class="card">
-        <h3>Les couleurs</h3>
+        <h3>${t('infoColors')}</h3>
         <ul class="legend">${LEGEND.map(
           ([k, label, text]) =>
-            `<li><span class="pill" style="background:${STATUS_COLORS[k].color};color:${STATUS_COLORS[k].textColor}">${label}</span><span>${text}</span></li>`,
+            `<li><span class="pill" style="background:${STATUS_COLORS[k].color};color:${STATUS_COLORS[k].textColor}">${t(label)}</span><span>${t(text)}</span></li>`,
         ).join('')}</ul>
-        <p class="hint">Le meilleur opérateur est marqué d'une ${ICONS.star}. Survolez un opérateur pour le détail.</p>
+        <p class="hint">${t('bestHint', { star: ICONS.star })}</p>
       </section>
       <section class="card">
-        <h3>La zone évaluée</h3>
+        <h3>${t('infoZone')}</h3>
         <ul class="facts">
-          <li><strong>Adresse</strong> : à l'endroit exact.</li>
-          <li><strong>Annonce sans adresse exacte</strong> : dans un rayon de 1 à 2 km.</li>
-          <li><strong>Commune</strong> : en France, part des habitants couverts, là où ils vivent (les zones inhabitées ne comptent pas) ; en Espagne, au centre de la commune.</li>
+          <li>${t('zoneAddress')}</li>
+          <li>${t('zoneListing')}</li>
+          <li>${t('zoneCommune')}</li>
         </ul>
       </section>
       <section class="card">
-        <h3>À savoir</h3>
+        <h3>${t('infoNotes')}</h3>
         <ul class="facts">
-          <li>Couverture <strong>théorique, en extérieur</strong> : à l'intérieur, le signal peut être plus faible.</li>
-          <li>« 5G » inclut la bande 700 MHz, de longue portée mais au débit proche de la 4G.</li>
-          <li>Espagne : Digi et les opérateurs virtuels utilisent le réseau d'un des quatre opérateurs affichés.</li>
+          <li>${t('noteTheoretical')}</li>
+          <li>${t('note700')}</li>
+          <li>${t('noteDigi')}</li>
         </ul>
       </section>
       <section class="card">
-        <h3>Sources : France</h3>
+        <h3>${t('sourcesFr')}</h3>
         <ul class="facts">
-          <li>Couverture : Arcep, « Mon Réseau Mobile »${dates(manifests.fr, 'au')}.</li>
-          <li>Population : Insee, Filosofi 2019 (carreaux de 200 m).</li>
-          <li>Adresses et fond de carte : IGN, Géoplateforme.</li>
+          <li>${t('srcFrCoverage', { dates: dates(manifests.fr, 'dateAt') })}</li>
+          <li>${t('srcFrPopulation')}</li>
+          <li>${t('srcFrMaps')}</li>
         </ul>
-        <h3 class="next">Sources : Espagne</h3>
+        <h3 class="next">${t('sourcesEs')}</h3>
         <ul class="facts">
-          <li>Couverture : ministère pour la Transformation numérique, « Mapa de servicios de banda ancha »${dates(manifests.es, 'publiée le')}.</li>
-          <li>Adresses : CartoCiudad (IGN España). Fond de carte : OpenFreeMap, © OpenStreetMap.</li>
+          <li>${t('srcEsCoverage', { dates: dates(manifests.es, 'datePublished') })}</li>
+          <li>${t('srcEsMaps')}</li>
         </ul>
-        <p class="hint">Données publiques. Frontières : © EuroGeographics. Extension indépendante, non affiliée à ces organismes ni aux opérateurs.</p>
+        <p class="hint">${t('srcFooter')}</p>
       </section>
       <section class="card">
-        <h3>Confidentialité</h3>
-        <p class="hint">Pas de compte, pas de pistage. Les pages ne sont lues qu'à votre demande.
-          <a href="${PRIVACY_URL}" target="_blank" rel="noopener">Politique de confidentialité</a></p>
+        <h3>${t('privacy')}</h3>
+        <p class="hint">${t('privacyText')}
+          <a href="${PRIVACY_URL}" target="_blank" rel="noopener">${t('privacyLink')}</a></p>
       </section>`;
   }
 }
