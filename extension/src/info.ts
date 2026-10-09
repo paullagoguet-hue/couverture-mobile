@@ -41,8 +41,8 @@ export class InfoPage {
     window.scrollTo(0, 0);
     // Dates des données : depuis les manifestes (déjà en cache après une recherche).
     // Hors ligne, la page s'affiche sans les dates.
-    const [fr, es] = await Promise.all((['fr', 'es'] as const).map((c) => this.getManifest(c).catch(() => undefined)));
-    if (this.visible) this.content.innerHTML = this.render({ fr, es });
+    const [fr, es, pt] = await Promise.all((['fr', 'es', 'pt'] as const).map((c) => this.getManifest(c).catch(() => undefined)));
+    if (this.visible) this.content.innerHTML = this.render({ fr, es, pt });
   }
 
   hide() {
@@ -96,6 +96,11 @@ export class InfoPage {
         <ul class="facts">
           <li>${t('srcEsCoverage', { dates: dates(manifests.es, 'datePublished') })}</li>
           <li>${t('srcEsMaps')}</li>
+        </ul>
+        <h3 class="next">${t('sourcesPt')}</h3>
+        <ul class="facts">
+          <li>${t('srcPtCoverage', { dates: dates(manifests.pt, 'dateAt') })}</li>
+          <li>${t('srcPtMaps')}</li>
         </ul>
         <p class="hint">${t('srcFooter')}</p>
       </section>

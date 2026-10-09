@@ -51,6 +51,13 @@ const CASES: Case[] = [
     query: `page=${JSON.stringify({ name: 'Piso', address: 'Madrid', lat: 40.4168, lng: -3.7038, precision: 'approximate', radiusM: 1000 })}`,
     expect: { titre: 'Madrid', note: /1 km/, fromPage: true },
   },
+  { name: 'Portugal : adresse (pays choisi)', query: 'pays=pt&q=Rua Augusta 100 Lisboa', expect: { titre: 'Rua Augusta 100' } },
+  { name: 'Portugal : clic droit, pays reconnu', query: 'q=Rua Augusta 100, Lisboa', expect: { titre: 'Rua Augusta 100' } },
+  {
+    name: 'Portugal : annonce avec coordonnées',
+    query: `page=${JSON.stringify({ name: 'Apartamento', address: 'Lisboa', lat: 38.7223, lng: -9.1393, precision: 'approximate', radiusM: 1000 })}`,
+    expect: { titre: 'Lisboa', note: /1 km/, fromPage: true },
+  },
   { name: 'Anglais : commune', query: 'lang=en&q=Bonneval-sur-Arc', expect: { titre: 'Bonneval-sur-Arc', note: /250 residents/ } },
   {
     name: 'Espagnol : annonce à Madrid',

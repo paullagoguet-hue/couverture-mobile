@@ -65,7 +65,7 @@ let country: CountryCode = 'fr';
 const COUNTRY_KEY = 'country';
 
 /** Nom du pays dans la langue de l'interface. */
-const countryName = (c: CountryCode) => t(c === 'fr' ? 'country_fr' : 'country_es');
+const countryName = (c: CountryCode) => t(`country_${c}`);
 
 const readers = new Map<CountryCode, CoverageReader>();
 const manifests = new Map<CountryCode, Promise<Manifest>>();
@@ -178,6 +178,7 @@ const EXAMPLES: [string, CountryCode][] = [
   ['10 Rue de Rivoli, Paris', 'fr'],
   ['Bonneval-sur-Arc', 'fr'],
   ['Calle Mayor 1, Madrid', 'es'],
+  ['Rua Augusta 100, Lisboa', 'pt'],
 ];
 
 /** Accueil : explication, trois façons de vérifier, exemples. */
@@ -390,7 +391,7 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
       <div id="minimap-slot"></div>
       ${fullMap ? `<p class="map-actions"><a id="full-map" class="btn" target="_blank" rel="noopener">${t('fullMap')} ${ICONS.arrow}</a></p>` : ''}
     </section>
-    <p class="source">${t('sourceLine', { source: t(c === 'fr' ? 'source_fr' : 'source_es') })} · <button type="button" class="link" data-info>${t('infoLink')}</button></p>
+    <p class="source">${t('sourceLine', { source: t(`source_${c}`) })} · <button type="button" class="link" data-info>${t('infoLink')}</button></p>
     <div id="encart-slot"></div>`,
     r.note,
   );

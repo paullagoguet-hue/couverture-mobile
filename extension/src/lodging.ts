@@ -53,13 +53,13 @@ const sites = (
 export const LODGING_SITES: LodgingSite[] = [
   // Hôtels
   ...sites('Booking', ['booking.com'], ['/hotel/*'], '^/hotel/', 'schema', 'exact'),
-  ...sites('Expedia', ['expedia.fr', 'expedia.com', 'expedia.be', 'expedia.ca', 'expedia.ch', 'expedia.es'], ['/*Hotel*'],
+  ...sites('Expedia', ['expedia.fr', 'expedia.com', 'expedia.be', 'expedia.ca', 'expedia.ch', 'expedia.es', 'expedia.pt'], ['/*Hotel*'],
     '\\.h\\d+\\.(Hotel-Information|Description-Hotel)', 'schema', 'exact'),
   ...sites('Hotels.com', ['hotels.com'], ['/ho*'], '^/ho\\d+', 'schema', 'exact'),
-  ...sites('Tripadvisor', ['tripadvisor.fr', 'tripadvisor.com', 'tripadvisor.be', 'tripadvisor.ch', 'tripadvisor.ca', 'tripadvisor.es'],
+  ...sites('Tripadvisor', ['tripadvisor.fr', 'tripadvisor.com', 'tripadvisor.be', 'tripadvisor.ch', 'tripadvisor.ca', 'tripadvisor.es', 'tripadvisor.pt'],
     ['/Hotel_Review-*', '/VacationRentalReview-*'], '^/(Hotel_Review|VacationRentalReview)-', 'schema', 'exact'),
   // Locations de vacances (adresse exacte communiquée après réservation)
-  ...sites('Airbnb', ['airbnb.fr', 'airbnb.com', 'airbnb.be', 'airbnb.ch', 'airbnb.ca', 'airbnb.es'], ['/rooms/*'], '^/rooms/', 'schema', 'approximate'),
+  ...sites('Airbnb', ['airbnb.fr', 'airbnb.com', 'airbnb.be', 'airbnb.ch', 'airbnb.ca', 'airbnb.es', 'airbnb.pt'], ['/rooms/*'], '^/rooms/', 'schema', 'approximate'),
   ...sites('Gîtes de France', ['gites-de-france.com'], ['/*/*/*/*'], '^/[a-z]{2}/[^/]+/[^/]+/[^/]+-\\d{2,3}[a-z]\\d+', 'map-attr', 'approximate', 'fr'),
   // Immobilier
   ...sites('Leboncoin', ['leboncoin.fr'], ['/ad/locations/*', '/ad/locations_gites/*', '/ad/ventes_immobilieres/*', '/ad/colocations/*'],

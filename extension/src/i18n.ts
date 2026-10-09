@@ -19,7 +19,7 @@ export const LANG_KEY = 'lang';
 const fr = {
   // Nom, menus, icône
   extName: 'Vérifier la couverture réseau',
-  extDescription: "Couverture 4G et 5G des opérateurs à une adresse, en France et en Espagne, d'après les cartes officielles. Sans compte.",
+  extDescription: "Couverture 4G et 5G des opérateurs à une adresse en France, en Espagne et au Portugal, d'après les cartes officielles.",
   menuSelection: 'Vérifier la couverture réseau',
   menuPage: 'Vérifier la connexion de ce logement',
 
@@ -29,12 +29,13 @@ const fr = {
   countriesAria: 'Pays de la recherche',
   country_fr: 'France',
   country_es: 'Espagne',
+  country_pt: 'Portugal',
   placeholder: 'Adresse ou commune',
   submit: 'Vérifier',
 
   // Accueil
   welcomeTitle: 'Votre téléphone captera-t-il ?',
-  welcomeLead: 'La 4G et la 5G des opérateurs, en France et en Espagne.',
+  welcomeLead: 'La 4G et la 5G des opérateurs, en France, en Espagne et au Portugal.',
   stepType: 'Tapez une adresse',
   stepSelect: 'Ou sélectionnez-la sur une page',
   stepSelectHint: 'puis clic droit',
@@ -72,6 +73,7 @@ const fr = {
   sourceLine: 'Couverture théorique, source {source}',
   source_fr: 'Arcep',
   source_es: 'ministère espagnol du Numérique',
+  source_pt: 'ANACOM',
   infoLink: 'Infos',
 
   // Verdicts
@@ -104,7 +106,7 @@ const fr = {
   approxNote: 'Adresse exacte non publiée par le site',
   communeOnly: 'Seule la commune est publiée par le site',
   countryNotCovered: 'Pays non couvert',
-  coversCountries: "L'extension couvre la France et l'Espagne.",
+  coversCountries: "L'extension couvre la France, l'Espagne et le Portugal.",
 
   // Page Infos
   back: '← Retour',
@@ -119,7 +121,7 @@ const fr = {
   zoneAddress: "<strong>Adresse</strong> : à l'endroit exact.",
   zoneListing: '<strong>Annonce sans adresse exacte</strong> : dans un rayon de 1 à 2 km.',
   zoneCommune:
-    '<strong>Commune</strong> : en France, part des habitants couverts, là où ils vivent (les zones inhabitées ne comptent pas) ; en Espagne, au centre de la commune.',
+    '<strong>Commune</strong> : en France, part des habitants couverts, là où ils vivent (les zones inhabitées ne comptent pas) ; en Espagne et au Portugal, au centre de la commune.',
   infoNotes: 'À savoir',
   noteTheoretical: "Couverture <strong>théorique, en extérieur</strong> : à l'intérieur, le signal peut être plus faible.",
   note700: '« 5G » inclut la bande 700 MHz, de longue portée mais au débit proche de la 4G.',
@@ -131,6 +133,9 @@ const fr = {
   sourcesEs: 'Sources : Espagne',
   srcEsCoverage: 'Couverture : ministère pour la Transformation numérique, « Mapa de servicios de banda ancha »{dates}.',
   srcEsMaps: 'Adresses : CartoCiudad (IGN España). Fond de carte : OpenFreeMap, © OpenStreetMap.',
+  sourcesPt: 'Sources : Portugal',
+  srcPtCoverage: "Couverture : ANACOM, « GEO.ANACOM », débit estimé par classe ; 5G provisoire{dates}.",
+  srcPtMaps: 'Adresses : Photon (komoot), © OpenStreetMap. Fond de carte : OpenFreeMap, © OpenStreetMap.',
   srcFooter: 'Données publiques. Frontières : © EuroGeographics. Extension indépendante, non affiliée à ces organismes ni aux opérateurs.',
   dateAt: '{techno} au {date}',
   datePublished: '{techno} publiée le {date}',
@@ -157,7 +162,7 @@ type Messages = Record<MessageKey, string>;
 
 const en: Messages = {
   extName: 'Check Mobile Coverage',
-  extDescription: '4G and 5G coverage from every operator at any address in France and Spain, from official maps. No account needed.',
+  extDescription: '4G and 5G coverage from every operator at any address in France, Spain and Portugal, from official maps.',
   menuSelection: 'Check mobile coverage',
   menuPage: 'Check the mobile signal of this rental',
 
@@ -166,11 +171,12 @@ const en: Messages = {
   countriesAria: 'Country to search',
   country_fr: 'France',
   country_es: 'Spain',
+  country_pt: 'Portugal',
   placeholder: 'Address or town',
   submit: 'Check',
 
   welcomeTitle: 'Will your phone get a signal?',
-  welcomeLead: '4G and 5G from every operator, in France and Spain.',
+  welcomeLead: '4G and 5G from every operator, in France, Spain and Portugal.',
   stepType: 'Type an address',
   stepSelect: 'Or select it on a page',
   stepSelectHint: 'then right-click',
@@ -206,6 +212,7 @@ const en: Messages = {
   sourceLine: 'Theoretical coverage, source: {source}',
   source_fr: 'Arcep',
   source_es: 'Spanish Ministry for Digital Transformation',
+  source_pt: 'ANACOM',
   infoLink: 'Info',
 
   status_5g: '5G',
@@ -236,7 +243,7 @@ const en: Messages = {
   approxNote: 'The site does not publish the exact address',
   communeOnly: 'The site only publishes the town',
   countryNotCovered: 'Country not covered',
-  coversCountries: 'The extension covers France and Spain.',
+  coversCountries: 'The extension covers France, Spain and Portugal.',
 
   back: '← Back',
   infoColors: 'Colours',
@@ -250,7 +257,7 @@ const en: Messages = {
   zoneAddress: '<strong>Address</strong>: at the exact spot.',
   zoneListing: '<strong>Listing without an exact address</strong>: within 1 to 2 km.',
   zoneCommune:
-    '<strong>Town</strong>: in France, the share of residents covered where they live (uninhabited areas do not count); in Spain, at the town centre.',
+    '<strong>Town</strong>: in France, the share of residents covered where they live (uninhabited areas do not count); in Spain and Portugal, at the town centre.',
   infoNotes: 'Good to know',
   noteTheoretical: '<strong>Theoretical, outdoor</strong> coverage: the signal may be weaker indoors.',
   note700: '“5G” includes the 700 MHz band: long range, but speeds close to 4G.',
@@ -262,6 +269,9 @@ const en: Messages = {
   sourcesEs: 'Sources: Spain',
   srcEsCoverage: 'Coverage: Ministry for Digital Transformation, “Mapa de servicios de banda ancha”{dates}.',
   srcEsMaps: 'Addresses: CartoCiudad (IGN España). Base map: OpenFreeMap, © OpenStreetMap.',
+  sourcesPt: 'Sources: Portugal',
+  srcPtCoverage: 'Coverage: ANACOM, “GEO.ANACOM”, estimated speed by class; provisional 5G{dates}.',
+  srcPtMaps: 'Addresses: Photon (komoot), © OpenStreetMap. Base map: OpenFreeMap, © OpenStreetMap.',
   srcFooter: 'Public data. Borders: © EuroGeographics. Independent extension, not affiliated with these bodies or with the operators.',
   dateAt: '{techno} as of {date}',
   datePublished: '{techno} published on {date}',
@@ -284,7 +294,7 @@ const en: Messages = {
 
 const es: Messages = {
   extName: 'Comprobar la cobertura móvil',
-  extDescription: 'Cobertura 4G y 5G de los operadores en cualquier dirección de Francia y España, según los mapas oficiales. Sin cuenta.',
+  extDescription: 'Cobertura 4G y 5G de los operadores en cualquier dirección de Francia, España y Portugal, según los mapas oficiales.',
   menuSelection: 'Comprobar la cobertura móvil',
   menuPage: 'Comprobar la cobertura de este alojamiento',
 
@@ -293,11 +303,12 @@ const es: Messages = {
   countriesAria: 'País de la búsqueda',
   country_fr: 'Francia',
   country_es: 'España',
+  country_pt: 'Portugal',
   placeholder: 'Dirección o municipio',
   submit: 'Comprobar',
 
   welcomeTitle: '¿Tendrá cobertura tu móvil?',
-  welcomeLead: 'El 4G y el 5G de los operadores, en Francia y en España.',
+  welcomeLead: 'El 4G y el 5G de los operadores, en Francia, España y Portugal.',
   stepType: 'Escribe una dirección',
   stepSelect: 'O selecciónala en una página',
   stepSelectHint: 'y haz clic derecho',
@@ -333,6 +344,7 @@ const es: Messages = {
   sourceLine: 'Cobertura teórica, fuente: {source}',
   source_fr: 'Arcep',
   source_es: 'Ministerio para la Transformación Digital',
+  source_pt: 'ANACOM',
   infoLink: 'Información',
 
   status_5g: '5G',
@@ -363,7 +375,7 @@ const es: Messages = {
   approxNote: 'El sitio no publica la dirección exacta',
   communeOnly: 'El sitio solo publica el municipio',
   countryNotCovered: 'País no disponible',
-  coversCountries: 'La extensión cubre Francia y España.',
+  coversCountries: 'La extensión cubre Francia, España y Portugal.',
 
   back: '← Volver',
   infoColors: 'Los colores',
@@ -377,7 +389,7 @@ const es: Messages = {
   zoneAddress: '<strong>Dirección</strong>: en el punto exacto.',
   zoneListing: '<strong>Anuncio sin dirección exacta</strong>: en un radio de 1 a 2 km.',
   zoneCommune:
-    '<strong>Municipio</strong>: en Francia, porcentaje de habitantes con cobertura donde viven (las zonas deshabitadas no cuentan); en España, en el centro del municipio.',
+    '<strong>Municipio</strong>: en Francia, porcentaje de habitantes con cobertura donde viven (las zonas deshabitadas no cuentan); en España y Portugal, en el centro del municipio.',
   infoNotes: 'A tener en cuenta',
   noteTheoretical: 'Cobertura <strong>teórica, en exteriores</strong>: en interiores la señal puede ser más débil.',
   note700: '«5G» incluye la banda de 700 MHz, de largo alcance pero con velocidades cercanas al 4G.',
@@ -389,6 +401,9 @@ const es: Messages = {
   sourcesEs: 'Fuentes: España',
   srcEsCoverage: 'Cobertura: Ministerio para la Transformación Digital, «Mapa de servicios de banda ancha»{dates}.',
   srcEsMaps: 'Direcciones: CartoCiudad (IGN España). Mapa base: OpenFreeMap, © OpenStreetMap.',
+  sourcesPt: 'Fuentes: Portugal',
+  srcPtCoverage: 'Cobertura: ANACOM, «GEO.ANACOM», velocidad estimada por clase; 5G provisional{dates}.',
+  srcPtMaps: 'Direcciones: Photon (komoot), © OpenStreetMap. Mapa base: OpenFreeMap, © OpenStreetMap.',
   srcFooter: 'Datos públicos. Fronteras: © EuroGeographics. Extensión independiente, sin relación con estos organismos ni con los operadores.',
   dateAt: '{techno} a {date}',
   datePublished: '{techno} publicada el {date}',
@@ -411,7 +426,7 @@ const es: Messages = {
 
 const de: Messages = {
   extName: 'Mobilfunkabdeckung prüfen',
-  extDescription: '4G- und 5G-Abdeckung aller Netzbetreiber an jeder Adresse in Frankreich und Spanien, nach amtlichen Karten. Ohne Konto.',
+  extDescription: '4G- und 5G-Abdeckung aller Netzbetreiber an jeder Adresse in Frankreich, Spanien und Portugal, nach amtlichen Karten.',
   menuSelection: 'Mobilfunkabdeckung prüfen',
   menuPage: 'Mobilfunkempfang dieser Unterkunft prüfen',
 
@@ -420,11 +435,12 @@ const de: Messages = {
   countriesAria: 'Land der Suche',
   country_fr: 'Frankreich',
   country_es: 'Spanien',
+  country_pt: 'Portugal',
   placeholder: 'Adresse oder Ort',
   submit: 'Prüfen',
 
   welcomeTitle: 'Hat Ihr Handy dort Empfang?',
-  welcomeLead: '4G und 5G aller Netzbetreiber, in Frankreich und Spanien.',
+  welcomeLead: '4G und 5G aller Netzbetreiber, in Frankreich, Spanien und Portugal.',
   stepType: 'Adresse eingeben',
   stepSelect: 'Oder auf einer Seite markieren',
   stepSelectHint: 'dann Rechtsklick',
@@ -460,6 +476,7 @@ const de: Messages = {
   sourceLine: 'Theoretische Abdeckung, Quelle: {source}',
   source_fr: 'Arcep',
   source_es: 'spanisches Digitalministerium',
+  source_pt: 'ANACOM',
   infoLink: 'Infos',
 
   status_5g: '5G',
@@ -490,7 +507,7 @@ const de: Messages = {
   approxNote: 'Die Seite veröffentlicht die genaue Adresse nicht',
   communeOnly: 'Die Seite veröffentlicht nur den Ort',
   countryNotCovered: 'Land nicht abgedeckt',
-  coversCountries: 'Die Erweiterung deckt Frankreich und Spanien ab.',
+  coversCountries: 'Die Erweiterung deckt Frankreich, Spanien und Portugal ab.',
 
   back: '← Zurück',
   infoColors: 'Die Farben',
@@ -504,7 +521,7 @@ const de: Messages = {
   zoneAddress: '<strong>Adresse</strong>: genau an diesem Punkt.',
   zoneListing: '<strong>Angebot ohne genaue Adresse</strong>: im Umkreis von 1 bis 2 km.',
   zoneCommune:
-    '<strong>Gemeinde</strong>: in Frankreich der Anteil der versorgten Einwohner an ihrem Wohnort (unbewohnte Gebiete zählen nicht); in Spanien im Ortszentrum.',
+    '<strong>Gemeinde</strong>: in Frankreich der Anteil der versorgten Einwohner an ihrem Wohnort (unbewohnte Gebiete zählen nicht); in Spanien und Portugal im Ortszentrum.',
   infoNotes: 'Gut zu wissen',
   noteTheoretical: '<strong>Theoretische Abdeckung im Freien</strong>: in Gebäuden kann das Signal schwächer sein.',
   note700: '„5G“ umfasst das 700-MHz-Band: große Reichweite, aber Geschwindigkeiten nahe an 4G.',
@@ -516,6 +533,9 @@ const de: Messages = {
   sourcesEs: 'Quellen: Spanien',
   srcEsCoverage: 'Abdeckung: Ministerium für digitale Transformation, „Mapa de servicios de banda ancha“{dates}.',
   srcEsMaps: 'Adressen: CartoCiudad (IGN España). Grundkarte: OpenFreeMap, © OpenStreetMap.',
+  sourcesPt: 'Quellen: Portugal',
+  srcPtCoverage: 'Abdeckung: ANACOM, „GEO.ANACOM“, geschätzte Geschwindigkeit nach Klasse; 5G vorläufig{dates}.',
+  srcPtMaps: 'Adressen: Photon (komoot), © OpenStreetMap. Grundkarte: OpenFreeMap, © OpenStreetMap.',
   srcFooter: 'Offene Daten. Grenzen: © EuroGeographics. Unabhängige Erweiterung, nicht mit diesen Stellen oder den Netzbetreibern verbunden.',
   dateAt: '{techno} Stand {date}',
   datePublished: '{techno} veröffentlicht am {date}',
@@ -538,7 +558,7 @@ const de: Messages = {
 
 const it: Messages = {
   extName: 'Verifica copertura mobile',
-  extDescription: 'Copertura 4G e 5G degli operatori a qualsiasi indirizzo in Francia e Spagna, dalle mappe ufficiali. Senza account.',
+  extDescription: 'Copertura 4G e 5G degli operatori a qualsiasi indirizzo in Francia, Spagna e Portogallo, dalle mappe ufficiali.',
   menuSelection: 'Verifica la copertura mobile',
   menuPage: 'Verifica il segnale di questo alloggio',
 
@@ -547,11 +567,12 @@ const it: Messages = {
   countriesAria: 'Paese della ricerca',
   country_fr: 'Francia',
   country_es: 'Spagna',
+  country_pt: 'Portogallo',
   placeholder: 'Indirizzo o comune',
   submit: 'Verifica',
 
   welcomeTitle: 'Il tuo telefono avrà campo?',
-  welcomeLead: 'Il 4G e il 5G degli operatori, in Francia e in Spagna.',
+  welcomeLead: 'Il 4G e il 5G degli operatori, in Francia, Spagna e Portogallo.',
   stepType: 'Scrivi un indirizzo',
   stepSelect: 'Oppure selezionalo in una pagina',
   stepSelectHint: 'poi clic destro',
@@ -587,6 +608,7 @@ const it: Messages = {
   sourceLine: 'Copertura teorica, fonte: {source}',
   source_fr: 'Arcep',
   source_es: 'ministero spagnolo per la Trasformazione digitale',
+  source_pt: 'ANACOM',
   infoLink: 'Info',
 
   status_5g: '5G',
@@ -617,7 +639,7 @@ const it: Messages = {
   approxNote: "Il sito non pubblica l'indirizzo esatto",
   communeOnly: 'Il sito pubblica solo il comune',
   countryNotCovered: 'Paese non coperto',
-  coversCountries: "L'estensione copre la Francia e la Spagna.",
+  coversCountries: "L'estensione copre Francia, Spagna e Portogallo.",
 
   back: '← Indietro',
   infoColors: 'I colori',
@@ -631,7 +653,7 @@ const it: Messages = {
   zoneAddress: '<strong>Indirizzo</strong>: nel punto esatto.',
   zoneListing: '<strong>Annuncio senza indirizzo esatto</strong>: entro 1-2 km.',
   zoneCommune:
-    "<strong>Comune</strong>: in Francia, quota di abitanti coperti dove vivono (le zone disabitate non contano); in Spagna, al centro del comune.",
+    "<strong>Comune</strong>: in Francia, quota di abitanti coperti dove vivono (le zone disabitate non contano); in Spagna e Portogallo, al centro del comune.",
   infoNotes: 'Da sapere',
   noteTheoretical: "Copertura <strong>teorica, all'aperto</strong>: al chiuso il segnale può essere più debole.",
   note700: '«5G» include la banda 700 MHz: lunga portata, ma velocità vicine al 4G.',
@@ -643,6 +665,9 @@ const it: Messages = {
   sourcesEs: 'Fonti: Spagna',
   srcEsCoverage: 'Copertura: ministero per la Trasformazione digitale, «Mapa de servicios de banda ancha»{dates}.',
   srcEsMaps: 'Indirizzi: CartoCiudad (IGN España). Mappa di base: OpenFreeMap, © OpenStreetMap.',
+  sourcesPt: 'Fonti: Portogallo',
+  srcPtCoverage: 'Copertura: ANACOM, «GEO.ANACOM», velocità stimata per classe; 5G provvisorio{dates}.',
+  srcPtMaps: 'Indirizzi: Photon (komoot), © OpenStreetMap. Mappa di base: OpenFreeMap, © OpenStreetMap.',
   srcFooter: 'Dati pubblici. Confini: © EuroGeographics. Estensione indipendente, non affiliata a questi enti né agli operatori.',
   dateAt: '{techno} al {date}',
   datePublished: '{techno} pubblicata il {date}',

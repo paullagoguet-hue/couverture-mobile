@@ -29,9 +29,10 @@ const tilesBase = env.VITE_TILES_BASE_URL ?? 'http://127.0.0.1:5173/tiles/';
  * Services contactés, en plus de l'hébergement des tuiles :
  *  - data.geopf.fr : géocodage et fond de carte en France (IGN) ;
  *  - www.cartociudad.es : géocodage en Espagne (IGN España) ;
+ *  - photon.komoot.io : géocodage au Portugal (OpenStreetMap) ;
  *  - tiles.openfreemap.org : fond de carte hors de France (OpenStreetMap).
  */
-const SERVICE_ORIGINS = ['https://data.geopf.fr', 'https://www.cartociudad.es', 'https://tiles.openfreemap.org'];
+const SERVICE_ORIGINS = ['https://data.geopf.fr', 'https://www.cartociudad.es', 'https://photon.komoot.io', 'https://tiles.openfreemap.org'];
 
 /**
  * CSP des pages de l'extension. `connect-src` liste les SEULES origines que
