@@ -20,7 +20,7 @@ const fromCard = (page: object) =>
   `await chrome.storage.session.set({ pendingQuery: { kind: 'page', ...${JSON.stringify(page)}, at: Date.now() } });`;
 const pause = (ms: number) => `await new Promise((r) => setTimeout(r, ${ms}));`;
 /** Attend que la recherche en cours télécharge la couverture (moment où l'annuler était risqué). */
-const whileReading = `while (!document.querySelector('.loading')?.textContent.includes('Lecture')) ${pause(2)}`;
+const whileReading = `for (let t = 0; t < 5000 && !document.querySelector('.loading')?.textContent.includes('Lecture'); t++) ${pause(2)}`;
 const TOURS = { name: 'Gîte', address: 'Tours', lat: 47.4066, lng: 0.6819, precision: 'approximate', radiusM: 1000 };
 
 interface Case {
@@ -38,6 +38,24 @@ const CASES: Case[] = [
   { name: 'Commune (habitants)', query: 'q=Bonneval-sur-Arc', expect: { note: /habitants/ } },
   { name: 'Annonce approximative (1 km)', query: `page=${JSON.stringify(TOURS)}`, expect: { note: /1 km/, fromPage: true } },
   { name: 'Adresse introuvable', query: 'q=xqzwv kkjjhh' },
+  { name: 'Espagne : adresse (pays choisi)', query: 'pays=es&q=Calle Mayor 1 Madrid', expect: { titre: 'Calle Mayor 1' } },
+  { name: 'Espagne : clic droit, pays reconnu', query: 'q=Gran Vía 28, Madrid', expect: { titre: 'Gran Via 28' } },
+  { name: 'Espagne : clic droit sur un nom de ville', query: 'q=Benidorm', expect: { titre: 'Benidorm' } },
+  {
+    name: 'Espagne : annonce sans coordonnées, pays publié',
+    query: `page=${JSON.stringify({ name: 'Hotel', address: 'Calle Mayor 1, 28013 Madrid', country: 'ES' })}`,
+    expect: { titre: 'Calle Mayor 1', fromPage: true },
+  },
+  {
+    name: 'Espagne : annonce avec coordonnées',
+    query: `page=${JSON.stringify({ name: 'Piso', address: 'Madrid', lat: 40.4168, lng: -3.7038, precision: 'approximate', radiusM: 1000 })}`,
+    expect: { titre: 'Madrid', note: /1 km/, fromPage: true },
+  },
+  {
+    name: 'Clics rapprochés : France puis Espagne',
+    actions: type('10 Rue de Rivoli 75004 Paris') + whileReading + fromCard({ name: 'Piso', address: 'Madrid', lat: 40.4168, lng: -3.7038, precision: 'approximate', radiusM: 1000 }),
+    expect: { titre: 'Madrid', fromPage: true },
+  },
   {
     name: 'Clics rapprochés : saisie puis encadré',
     actions: type('15 Boulevard de la Liberté 59800 Lille') + whileReading + fromCard(TOURS),

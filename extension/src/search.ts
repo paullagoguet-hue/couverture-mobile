@@ -6,11 +6,13 @@
  * de couverture au lieu choisi ; Entrée lance une recherche sur le texte saisi.
  * Clavier : ↓/↑ parcourent les suggestions, Échap les ferme.
  */
-import { normalizeQuery, suggestAddresses, type GeocodeResult } from '@couverture/core';
+import { normalizeQuery, suggestAddresses, type CountryCode, type GeocodeResult } from '@couverture/core';
 
 const DEBOUNCE_MS = 250;
 
 export interface SearchBoxHandlers {
+  /** Pays où chercher les suggestions (celui choisi dans le panneau). */
+  country(): CountryCode;
   /** Recherche sur un texte libre (Entrée / bouton). */
   onSubmit(text: string): void;
   /** Lieu choisi dans les suggestions. */
@@ -24,7 +26,10 @@ export class SearchBox {
   private pending: AbortController | undefined;
   private results: GeocodeResult[] = [];
 
+  private handlers: SearchBoxHandlers;
+
   constructor(form: HTMLFormElement, handlers: SearchBoxHandlers) {
+    this.handlers = handlers;
     this.input = form.querySelector('input')!;
     this.list = form.querySelector('.suggestions')!;
 
@@ -79,7 +84,7 @@ export class SearchBox {
     if (!normalizeQuery(text)) return this.close();
     const ctrl = (this.pending = new AbortController());
     try {
-      this.results = await suggestAddresses(text, { limit: 5, signal: ctrl.signal });
+      this.results = await suggestAddresses(text, { limit: 5, country: this.handlers.country(), signal: ctrl.signal });
     } catch {
       return; // saisie suivante ou réseau indisponible : la recherche par Entrée affichera l'erreur
     }

@@ -36,6 +36,8 @@ export interface LodgingSite {
   pathRegex: string;
   reader: LodgingReader;
   precision: Precision;
+  /** Site d'un seul pays (annonces françaises) : pays connu sans lire la page. */
+  country?: 'fr' | 'es';
 }
 
 const sites = (
@@ -45,25 +47,26 @@ const sites = (
   pathRegex: string,
   reader: LodgingReader,
   precision: Precision,
-): LodgingSite[] => hosts.map((host) => ({ label, host, paths, pathRegex, reader, precision }));
+  country?: LodgingSite['country'],
+): LodgingSite[] => hosts.map((host) => ({ label, host, paths, pathRegex, reader, precision, country }));
 
 export const LODGING_SITES: LodgingSite[] = [
   // Hôtels
   ...sites('Booking', ['booking.com'], ['/hotel/*'], '^/hotel/', 'schema', 'exact'),
-  ...sites('Expedia', ['expedia.fr', 'expedia.com', 'expedia.be', 'expedia.ca', 'expedia.ch'], ['/*Hotel*'],
+  ...sites('Expedia', ['expedia.fr', 'expedia.com', 'expedia.be', 'expedia.ca', 'expedia.ch', 'expedia.es'], ['/*Hotel*'],
     '\\.h\\d+\\.(Hotel-Information|Description-Hotel)', 'schema', 'exact'),
   ...sites('Hotels.com', ['hotels.com'], ['/ho*'], '^/ho\\d+', 'schema', 'exact'),
-  ...sites('Tripadvisor', ['tripadvisor.fr', 'tripadvisor.com', 'tripadvisor.be', 'tripadvisor.ch', 'tripadvisor.ca'],
+  ...sites('Tripadvisor', ['tripadvisor.fr', 'tripadvisor.com', 'tripadvisor.be', 'tripadvisor.ch', 'tripadvisor.ca', 'tripadvisor.es'],
     ['/Hotel_Review-*', '/VacationRentalReview-*'], '^/(Hotel_Review|VacationRentalReview)-', 'schema', 'exact'),
   // Locations de vacances (adresse exacte communiquée après réservation)
-  ...sites('Airbnb', ['airbnb.fr', 'airbnb.com', 'airbnb.be', 'airbnb.ch', 'airbnb.ca'], ['/rooms/*'], '^/rooms/', 'schema', 'approximate'),
-  ...sites('Gîtes de France', ['gites-de-france.com'], ['/*/*/*/*'], '^/[a-z]{2}/[^/]+/[^/]+/[^/]+-\\d{2,3}[a-z]\\d+', 'map-attr', 'approximate'),
+  ...sites('Airbnb', ['airbnb.fr', 'airbnb.com', 'airbnb.be', 'airbnb.ch', 'airbnb.ca', 'airbnb.es'], ['/rooms/*'], '^/rooms/', 'schema', 'approximate'),
+  ...sites('Gîtes de France', ['gites-de-france.com'], ['/*/*/*/*'], '^/[a-z]{2}/[^/]+/[^/]+/[^/]+-\\d{2,3}[a-z]\\d+', 'map-attr', 'approximate', 'fr'),
   // Immobilier
   ...sites('Leboncoin', ['leboncoin.fr'], ['/ad/locations/*', '/ad/locations_gites/*', '/ad/ventes_immobilieres/*', '/ad/colocations/*'],
-    '^/ad/(locations|locations_gites|ventes_immobilieres|colocations)/', 'leboncoin', 'approximate'),
-  ...sites('PAP', ['pap.fr'], ['/annonces/*'], '^/annonces/[^/]+-r\\d+', 'schema', 'approximate'),
-  ...sites("Bien'ici", ['bienici.com'], ['/annonce/*'], '^/annonce/', 'schema', 'commune'),
-  ...sites('SeLoger', ['seloger.com'], ['/annonce/*'], '^/annonce/.+/[a-z0-9-]+-\\d{5}/', 'url-commune', 'commune'),
+    '^/ad/(locations|locations_gites|ventes_immobilieres|colocations)/', 'leboncoin', 'approximate', 'fr'),
+  ...sites('PAP', ['pap.fr'], ['/annonces/*'], '^/annonces/[^/]+-r\\d+', 'schema', 'approximate', 'fr'),
+  ...sites("Bien'ici", ['bienici.com'], ['/annonce/*'], '^/annonce/', 'schema', 'commune', 'fr'),
+  ...sites('SeLoger', ['seloger.com'], ['/annonce/*'], '^/annonce/.+/[a-z0-9-]+-\\d{5}/', 'url-commune', 'commune', 'fr'),
 ];
 
 /** Motifs d'URL pour le manifeste (content script, page_action) et les menus. */
@@ -86,6 +89,7 @@ export const LODGING_RULES = LODGING_SITES.map((s) => ({
   reader: s.reader,
   precision: s.precision,
   radiusM: radiusFor(s),
+  country: s.country,
 }));
 export type LodgingRule = (typeof LODGING_RULES)[number];
 
@@ -121,6 +125,8 @@ export interface PageAddress {
   precision?: Precision;
   /** Rayon d'évaluation de la couverture (emplacement approximatif). */
   radiusM?: number;
+  /** Pays publié par la page (« ES », « España »…) ou propre au site ; interprété par le panneau. */
+  country?: string;
 }
 
 /**
@@ -136,7 +142,7 @@ export function extractStructuredAddress(rules: LodgingRule[]): PageAddress | nu
   const rule = onSite.find((r) => new RegExp(r.pathRegex).test(location.pathname));
   if (!rule) return { notLodging: true, sameSite: onSite.length > 0 }; // seule l'adresse de la page a été regardée
 
-  const result: PageAddress = { precision: rule.precision, radiusM: rule.radiusM };
+  const result: PageAddress = { precision: rule.precision, radiusM: rule.radiusM, country: rule.country };
   const setCoords = (lat: unknown, lng: unknown) => {
     const la = Number(lat), lo = Number(lng);
     if (Number.isFinite(la) && Number.isFinite(lo) && Math.abs(la) <= 90 && Math.abs(lo) <= 180 && (la !== 0 || lo !== 0)) {
@@ -144,11 +150,17 @@ export function extractStructuredAddress(rules: LodgingRule[]): PageAddress | nu
       result.lng = lo;
     }
   };
+  const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  /** addressCountry : texte (« ES », « Spain ») ou objet Country ({ name }). */
+  const setCountry = (c: unknown) => {
+    const value = str(c) || (c && typeof c === 'object' ? str((c as Record<string, unknown>).name) : '');
+    if (value && !result.country) result.country = value;
+  };
   const formatAddress = (addr: unknown): string | undefined => {
     if (typeof addr === 'string') return addr.trim() || undefined;
     if (!addr || typeof addr !== 'object') return undefined;
     const a = addr as Record<string, unknown>;
-    const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+    setCountry(a.addressCountry);
     const street = str(a.streetAddress), postal = str(a.postalCode), city = str(a.addressLocality);
     // Certains sites mettent l'adresse complète dans streetAddress (code postal compris).
     if (postal && street.includes(postal)) return street;
@@ -223,6 +235,7 @@ export function extractStructuredAddress(rules: LodgingRule[]): PageAddress | nu
         };
         result.name = prop('name') || undefined;
         result.address = formatAddress({ streetAddress: prop('streetAddress'), postalCode: prop('postalCode'), addressLocality: prop('addressLocality') });
+        setCountry(prop('addressCountry'));
         setCoords(prop('latitude'), prop('longitude'));
       }
     }

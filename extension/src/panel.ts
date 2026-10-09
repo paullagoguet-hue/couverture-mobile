@@ -6,6 +6,15 @@
  * verdict par opérateur, le meilleur opérateur et une mini-carte.
  * Hors extension (tests), la requête peut être passée en paramètre : panel.html?q=…
  *
+ * Plusieurs pays (France, Espagne) : chacun a ses tuiles, son manifeste (donc
+ * ses opérateurs) et son géocodeur. Le pays est fixé AVANT de chercher
+ * l'adresse, dans cet ordre :
+ *  1. coordonnées publiées par l'annonce → pays du point (countryAt) ;
+ *  2. pays publié par l'annonce (addressCountry) ou propre au site (Leboncoin…) ;
+ *  3. saisie : pays choisi par l'utilisateur (boutons au-dessus du champ) ;
+ *  4. seulement pour un texte sélectionné ou une annonce sans indice : les
+ *     deux géocodeurs, et la réponse la plus crédible (geocodeAnyCountry).
+ *
  * Robustesse : chaque recherche a son propre AbortController ; une nouvelle
  * recherche (saisie, clic droit, page d'annonce…) annule la précédente, dont
  * le résultat n'est alors jamais affiché. Les ressources partagées (manifeste,
@@ -16,14 +25,23 @@ import {
   bestOperators,
   cleanAddress,
   communeToCoverage,
+  COUNTRIES,
+  COUNTRY_CODES,
+  countryAt,
+  countryFromText,
   CoverageReader,
   geocode,
+  geocodeAnyCountry,
+  isCountryCode,
   isUnambiguous,
   loadCommuneCoverage,
   loadManifest,
   operatorStatus,
+  resolvePlace,
   SHARED_FETCH_TIMEOUT_MS,
   summarizeByOperator,
+  tilesBaseFor,
+  type CountryCode,
   type GeocodeResult,
   type LayerCoverage,
   type Manifest,
@@ -33,19 +51,45 @@ import { api, PENDING_KEY, type PendingQuery } from './browser.ts';
 import { CARD_ENABLED_KEY } from './messages.ts';
 import { SITE_URL, TILES_BASE_URL } from './config.ts';
 import { fillEncart } from './encart.ts';
-import { HERO_SVG, ICONS } from './illustrations.ts';
+import { FLAGS, HERO_SVG, ICONS } from './illustrations.ts';
 import { InfoPage } from './info.ts';
 import { MiniMap } from './minimap.ts';
 import { SearchBox } from './search.ts';
 
 const out = document.getElementById('result')!;
-let reader = new CoverageReader(TILES_BASE_URL);
-let manifestPromise: Promise<Manifest> | undefined;
 let currentRun: AbortController | undefined;
 
-/** Manifeste partagé entre recherches : téléchargé sans le signal de l'une d'elles. */
-const getManifest = () =>
-  (manifestPromise ??= loadManifest(TILES_BASE_URL, fetch, AbortSignal.timeout(SHARED_FETCH_TIMEOUT_MS)));
+/** Pays de la saisie manuelle (mémorisé) ; les résultats portent leur propre pays. */
+let country: CountryCode = 'fr';
+const COUNTRY_KEY = 'country';
+
+/** Source citée sous chaque résultat. */
+const SOURCE_LABEL: Record<CountryCode, string> = { fr: 'Arcep', es: 'ministère espagnol du Numérique' };
+
+const readers = new Map<CountryCode, CoverageReader>();
+const manifests = new Map<CountryCode, Promise<Manifest>>();
+
+const tilesBase = (c: CountryCode) => tilesBaseFor(TILES_BASE_URL, c);
+
+function readerFor(c: CountryCode): CoverageReader {
+  let reader = readers.get(c);
+  if (!reader) readers.set(c, (reader = new CoverageReader(tilesBase(c))));
+  return reader;
+}
+
+/**
+ * Manifeste d'un pays, partagé entre recherches : téléchargé sans le signal de
+ * l'une d'elles, et retiré du cache s'il échoue (le prochain essai recommence).
+ */
+function getManifest(c: CountryCode): Promise<Manifest> {
+  let manifest = manifests.get(c);
+  if (!manifest) {
+    const loading = loadManifest(tilesBase(c), fetch, AbortSignal.timeout(SHARED_FETCH_TIMEOUT_MS));
+    loading.catch(() => manifests.get(c) === loading && manifests.delete(c));
+    manifests.set(c, (manifest = loading));
+  }
+  return manifest;
+}
 
 const info = new InfoPage(getManifest);
 
@@ -106,7 +150,34 @@ function message(o: { icon: string; title: string; body: string; error?: boolean
   );
 }
 
-const EXAMPLES = ['10 Rue de Rivoli, Paris', 'Bonneval-sur-Arc', 'Belle-Île-en-Mer'];
+// --- Pays ---------------------------------------------------------------------
+
+const countryButtons = [...document.querySelectorAll<HTMLButtonElement>('#countries button')];
+countryButtons.forEach((b) => {
+  const c = b.dataset.country as CountryCode;
+  b.addEventListener('click', () => {
+    setCountry(c);
+    search.focus();
+  });
+});
+
+/** Change le pays de la saisie (boutons, ou résultat trouvé dans un autre pays). */
+function setCountry(c: CountryCode, remember = true) {
+  country = c;
+  countryButtons.forEach((b) => b.setAttribute('aria-checked', String(b.dataset.country === c)));
+  search.close();
+  if (remember) void api?.storage.local.set({ [COUNTRY_KEY]: c }).catch(() => {});
+  // Opérateurs du pays chargés dès maintenant : la recherche suivante sera plus rapide.
+  getManifest(c).catch(() => {});
+}
+
+// --- Accueil --------------------------------------------------------------------
+
+const EXAMPLES: [string, CountryCode][] = [
+  ['10 Rue de Rivoli, Paris', 'fr'],
+  ['Bonneval-sur-Arc', 'fr'],
+  ['Calle Mayor 1, Madrid', 'es'],
+];
 
 /** Accueil : explication, trois façons de vérifier, exemples. */
 function showWelcome() {
@@ -114,7 +185,7 @@ function showWelcome() {
   show(`<section class="welcome">
     ${HERO_SVG}
     <h2>Votre téléphone captera-t-il ?</h2>
-    <p class="lead">La 4G et la 5G des quatre opérateurs, à n'importe quelle adresse.</p>
+    <p class="lead">La 4G et la 5G des opérateurs, en France et en Espagne.</p>
     <div class="card">
       <ul class="steps">
         <li><span class="bubble">${ICONS.search}</span><div><strong>Tapez une adresse</strong></div></li>
@@ -126,33 +197,64 @@ function showWelcome() {
     </div>
     <div class="card">
       <h3>Essayer</h3>
-      <div class="examples">${EXAMPLES.map((e) => `<button type="button">${escapeHtml(e)}</button>`).join('')}</div>
+      <div class="examples">${EXAMPLES.map(([e, c]) => `<button type="button" data-country="${c}">${escapeHtml(e)}</button>`).join('')}</div>
     </div>
   </section>`);
   out.querySelectorAll<HTMLButtonElement>('.examples button').forEach((b) =>
-    b.addEventListener('click', () => void run(b.textContent!)),
+    b.addEventListener('click', () => {
+      setCountry(b.dataset.country as CountryCode);
+      void run(b.textContent!);
+    }),
   );
 }
 
+// --- Recherche ------------------------------------------------------------------
+
+interface RunOptions {
+  note?: string;
+  radiusM?: number;
+  /**
+   * Pays où chercher : connu d'avance (annonce), ou 'any' pour un texte sans
+   * indice (cf. geocodeAnyCountry). Par défaut : le pays choisi par l'utilisateur.
+   */
+  where?: CountryCode | 'any';
+}
+
 /** Point d'entrée : un texte sélectionné, saisi ou lu sur la page. */
-async function run(text: string, note = '', radiusM?: number) {
+async function run(text: string, options: RunOptions = {}) {
+  const { note = '', radiusM, where = country } = options;
   search.setText(text);
   const r = startRun(note, radiusM);
   loading(`Recherche de « ${escapeHtml(text)} »…`, r.note);
+  const anyCountry = where === 'any';
+  const others = COUNTRY_CODES.filter((c) => c !== where);
   try {
-    const results = await geocode(text, { limit: 5, signal: r.signal });
+    const results = anyCountry
+      ? await geocodeAnyCountry(text, { limit: 5, signal: r.signal })
+      : await geocode(text, { limit: 5, country: where, signal: r.signal });
     if (r.signal.aborted) return;
     if (!results.length) {
       message(
         {
           icon: ICONS.pin,
-          title: 'Adresse introuvable',
+          title: `Adresse introuvable${anyCountry ? '' : ` (${COUNTRIES[where].label})`}`,
           body: `<p>Essayez avec la ville ou le code postal.</p>`,
+          action: anyCountry
+            ? undefined
+            : others.map((c) => `<button class="btn" type="button" data-country="${c}">${FLAGS[c]}Chercher : ${COUNTRIES[c].label}</button>`).join(' '),
         },
         r.note,
       );
+      out.querySelectorAll<HTMLButtonElement>('[data-country]').forEach((b) =>
+        b.addEventListener('click', () => {
+          const c = b.dataset.country as CountryCode;
+          setCountry(c);
+          void run(text, { ...options, where: c });
+        }),
+      );
       return;
     }
+    if (results[0].country !== country) setCountry(results[0].country);
     if (isUnambiguous(results)) return await showCoverage(results[0], r);
     // Plusieurs lieux plausibles : l'utilisateur choisit.
     show(
@@ -183,7 +285,7 @@ async function run(text: string, note = '', radiusM?: number) {
       },
       r.note,
     );
-    out.querySelector('#retry')!.addEventListener('click', () => void run(text, note, radiusM));
+    out.querySelector('#retry')!.addEventListener('click', () => void run(text, options));
   }
 }
 
@@ -191,25 +293,27 @@ async function run(text: string, note = '', radiusM?: number) {
 async function showCoverage(place: GeocodeResult, r: Run) {
   if (r.signal.aborted) return;
   loading(`Lecture de la couverture à ${escapeHtml(place.label)}…`, r.note);
+  const c = place.country;
   const signal = AbortSignal.any([r.signal, AbortSignal.timeout(COVERAGE_TIMEOUT_MS)]);
   try {
-    // Manifeste partagé entre recherches : téléchargé sans le signal de celle-ci.
-    const manifest = await abortable(getManifest(), signal);
+    // Position parfois donnée en deux temps par le géocodeur (Espagne).
+    const located = await resolvePlace(place, signal);
+    const manifest = await abortable(getManifest(c), signal);
     // Commune sans adresse précise : parts d'habitants précalculées sur tout son
-    // territoire si elles sont publiées, sinon couverture au point central.
-    const commune = place.type === 'municipality' && place.citycode
-      ? await loadCommuneCoverage(TILES_BASE_URL, place.citycode, signal)
+    // territoire si elles sont publiées (France), sinon couverture au point central.
+    const commune = c === 'fr' && located.type === 'municipality' && located.citycode
+      ? await loadCommuneCoverage(tilesBase(c), located.citycode, signal)
       : null;
     const coverage = commune
       ? communeToCoverage(manifest.layers, commune)
-      : await reader.query(manifest.layers, place.lng, place.lat, signal, r.radiusM);
+      : await readerFor(c).query(manifest.layers, located.lng, located.lat, signal, r.radiusM);
     if (r.signal.aborted) return; // une recherche plus récente a pris la main
-    renderCoverage(place, manifest, coverage, r);
+    renderCoverage(located, manifest, coverage, r);
   } catch (err) {
     if (r.signal.aborted) return; // remplacée par une recherche plus récente : rien à signaler
     // Vrai échec (réseau, délai) : ne pas garder les caches, le prochain essai repart de zéro.
-    manifestPromise = undefined;
-    reader = new CoverageReader(TILES_BASE_URL);
+    manifests.delete(c);
+    readers.delete(c);
     console.error(err);
     const timedOut = signal.aborted;
     message(
@@ -228,6 +332,7 @@ async function showCoverage(place: GeocodeResult, r: Run) {
 }
 
 function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: LayerCoverage[], r: Run) {
+  const c = place.country;
   const summaries = summarizeByOperator(coverage);
   const statuses = new Map(summaries.map((s) => [s.operator, operatorStatus(s)]));
   const best = bestOperators(summaries);
@@ -251,7 +356,7 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
   const bestText = !best.length
     ? 'Ni 4G ni 5G ici.'
     : allTied
-      ? 'Même couverture pour les quatre opérateurs.'
+      ? 'Même couverture pour tous les opérateurs.'
       : `Meilleur : <strong>${best.map((b) => escapeHtml(b.operatorLabel)).join(', ')}</strong>`;
 
   const area = coverage[0]?.area;
@@ -264,11 +369,14 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
         ? `Taux de 5G dans un rayon de ${formatDistance(area!.radiusM ?? APPROX_RADIUS_M)}`
         : '';
 
+  // La carte complète (site web) ne couvre que la France pour l'instant.
+  const fullMap = c === 'fr';
+
   show(
     `<section class="card">
-      <div class="place-head">${ICONS.pin}<h2>${escapeHtml(place.label)}</h2></div>
+      <div class="place-head">${ICONS.pin}<h2>${escapeHtml(place.label)}</h2><span class="flag" title="${COUNTRIES[c].label}">${FLAGS[c]}</span></div>
       ${areaNote ? `<p class="area-note">${areaNote}</p>` : ''}
-      ${place.type === 'municipality' && !r.note && zone !== 'commune' // le bandeau de la page le dit déjà
+      ${['municipality', 'locality'].includes(place.type) && !r.note && zone !== 'commune' // le bandeau de la page le dit déjà
         ? '<p class="warning">Couverture au centre de la commune</p>'
         : ''}
     </section>
@@ -279,15 +387,15 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
     <section class="card">
       <p class="map-caption">Carte : <strong id="map-layer"></strong></p>
       <div id="minimap-slot"></div>
-      <p class="map-actions"><a id="full-map" class="btn" target="_blank" rel="noopener">Voir sur la carte complète ${ICONS.arrow}</a></p>
+      ${fullMap ? `<p class="map-actions"><a id="full-map" class="btn" target="_blank" rel="noopener">Voir sur la carte complète ${ICONS.arrow}</a></p>` : ''}
     </section>
-    <p class="source">Couverture théorique, source Arcep · <button type="button" class="link" data-info>Infos</button></p>
+    <p class="source">Couverture théorique, source ${SOURCE_LABEL[c]} · <button type="button" class="link" data-info>Infos</button></p>
     <div id="encart-slot"></div>`,
     r.note,
   );
 
   out.querySelector('[data-info]')!.addEventListener('click', () => void info.show());
-  const miniMap = attachMiniMap(document.getElementById('minimap-slot')!);
+  const miniMap = attachMiniMap(document.getElementById('minimap-slot')!, c);
   // Publicité éventuelle : sous le résultat, jamais avant, sans effet sur le classement.
   void fillEncart(document.getElementById('encart-slot')!);
 
@@ -297,12 +405,15 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
     if (!layer) return;
     out.querySelectorAll<HTMLElement>('.cell').forEach((b) => b.classList.toggle('selected', b.dataset.layer === layerId));
     document.getElementById('map-layer')!.textContent = `${layer.operator_label} ${layer.techno.toUpperCase()}`;
-    const url = new URL(SITE_URL);
-    url.searchParams.set('operateur', layer.operator);
-    url.searchParams.set('techno', layer.techno);
-    url.hash = `15/${place.lat.toFixed(5)}/${place.lng.toFixed(5)}`;
-    (document.getElementById('full-map') as HTMLAnchorElement).href = url.href;
-    miniMap?.show(layer, place.lng, place.lat, zone === 'commune' ? 11 : 13).catch(console.error);
+    if (fullMap) {
+      const url = new URL(SITE_URL);
+      url.searchParams.set('operateur', layer.operator);
+      url.searchParams.set('techno', layer.techno);
+      url.hash = `15/${place.lat.toFixed(5)}/${place.lng.toFixed(5)}`;
+      (document.getElementById('full-map') as HTMLAnchorElement).href = url.href;
+    }
+    const tilesUrl = new URL(layer.tiles.file, tilesBase(c)).href;
+    miniMap?.show(c, layer, tilesUrl, place.lng, place.lat, zone === 'commune' ? 11 : 13).catch(console.error);
   };
   out.querySelectorAll<HTMLButtonElement>('.cell').forEach((b) => b.addEventListener('click', () => select(b.dataset.layer!)));
 
@@ -320,7 +431,7 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
 let miniMap: MiniMap | undefined;
 let miniMapFailed = false;
 const mapContainer = Object.assign(document.createElement('div'), { id: 'minimap' });
-function attachMiniMap(slot: HTMLElement): MiniMap | undefined {
+function attachMiniMap(slot: HTMLElement, country: CountryCode): MiniMap | undefined {
   if (miniMapFailed) {
     slot.closest('section')?.querySelector('.map-caption')?.remove();
     slot.remove();
@@ -328,7 +439,7 @@ function attachMiniMap(slot: HTMLElement): MiniMap | undefined {
   }
   slot.replaceWith(mapContainer);
   try {
-    miniMap ??= new MiniMap(mapContainer);
+    miniMap ??= new MiniMap(mapContainer, country);
     miniMap.resize();
   } catch (err) {
     console.error('Mini-carte indisponible :', err);
@@ -341,8 +452,9 @@ function attachMiniMap(slot: HTMLElement): MiniMap | undefined {
 
 // --- Réception des requêtes -------------------------------------------------
 
-// Saisie manuelle (étape 5) : Entrée, ou choix d'une suggestion.
+// Saisie manuelle (étape 5) : Entrée, ou choix d'une suggestion (dans le pays choisi).
 const search = new SearchBox(document.getElementById('search') as HTMLFormElement, {
+  country: () => country,
   onSubmit: (text) => void run(text),
   onPick: (place) => void showCoverage(place, startRun()),
 });
@@ -356,7 +468,7 @@ function handlePending(p: PendingQuery) {
   if (p.at <= lastPendingAt) return;
   lastPendingAt = p.at;
   if (p.kind === 'selection') {
-    void run(p.text);
+    void run(p.text, { where: 'any' });
   } else if (p.kind === 'not-lodging-page') {
     currentRun?.abort();
     message({
@@ -384,15 +496,37 @@ function handlePending(p: PendingQuery) {
     }[p.precision ?? 'exact'];
     const note = `Lu sur la page : ${what}${precisionNote}`;
     if (p.lat !== undefined && p.lng !== undefined) {
-      // Coordonnées publiées par la page : pas besoin de géocoder.
+      // Coordonnées publiées par la page : pas besoin de géocoder ; le pays se déduit du point.
       search.setText(p.address ?? p.name ?? '');
+      const c = countryAt(p.lng, p.lat);
+      if (!c) {
+        currentRun?.abort();
+        message(
+          {
+            icon: ICONS.pin,
+            title: 'Pays non couvert',
+            body: `<p>L'extension couvre la France et l'Espagne.</p>`,
+          },
+          note,
+        );
+        return;
+      }
+      setCountry(c);
       const label = p.address ?? p.name ?? `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
       void showCoverage(
-        { label, type: 'housenumber', score: 1, lng: p.lng, lat: p.lat, citycode: '', city: '', context: '' },
+        { label, type: 'housenumber', score: 1, lng: p.lng, lat: p.lat, citycode: '', city: '', context: '', country: c },
         startRun(note, radius),
       );
     } else {
-      void run(cleanAddress(p.address!), note, radius);
+      // Pays publié par l'annonce ou propre au site ; sinon recherche dans tous les pays.
+      const published = countryFromText(p.country);
+      if (published === 'other') {
+        currentRun?.abort();
+        message({ icon: ICONS.pin, title: 'Pays non couvert', body: `<p>L'extension couvre la France et l'Espagne.</p>` }, note);
+        return;
+      }
+      if (published) setCountry(published);
+      void run(cleanAddress(p.address!), { note, radiusM: radius, where: published ?? 'any' });
     }
   }
 }
@@ -400,36 +534,49 @@ function handlePending(p: PendingQuery) {
 /** Au-delà, une requête déposée par l'arrière-plan est considérée comme ancienne. */
 const PENDING_MAX_AGE_MS = 30_000;
 
-// Tests hors extension : panel.html?q=<texte> (sélection) ou panel.html?page=<JSON> (adresse lue sur une page).
-const params = new URLSearchParams(location.search);
-const testQuery = params.get('q');
-const testPage = params.get('page');
-if (testQuery) {
-  void run(testQuery);
-} else if (testPage) {
-  handlePending({ kind: 'page', ...JSON.parse(testPage), at: Date.now() });
-} else if (api) {
-  // … ou pendant qu'il est ouvert (écouteur posé d'abord : rien ne se perd).
-  api.storage.session.onChanged.addListener((changes) => {
-    const p = changes[PENDING_KEY]?.newValue as PendingQuery | undefined;
-    if (p) handlePending(p);
-  });
-  // Requête déposée juste avant l'ouverture du panneau ; sinon (ouverture par
-  // l'icône), accueil et main au champ de saisie.
-  api.storage.session.get(PENDING_KEY).then(
-    (items) => {
+/** Démarrage : pays mémorisé, puis requête en attente (ou accueil). */
+async function start() {
+  // Tests hors extension : panel.html?pays=es&q=<texte> (sélection) ou ?page=<JSON> (adresse lue sur une page).
+  const params = new URLSearchParams(location.search);
+  const testCountry = params.get('pays');
+  const testQuery = params.get('q');
+  const testPage = params.get('page');
+
+  try {
+    const saved = (await api?.storage.local.get(COUNTRY_KEY))?.[COUNTRY_KEY];
+    setCountry(isCountryCode(testCountry) ? testCountry : isCountryCode(saved) ? saved : 'fr', false);
+  } catch {
+    setCountry('fr', false);
+  }
+
+  if (testQuery) {
+    void run(testQuery, { where: isCountryCode(testCountry) ? testCountry : 'any' });
+  } else if (testPage) {
+    handlePending({ kind: 'page', ...JSON.parse(testPage), at: Date.now() });
+  } else if (api) {
+    // … ou pendant qu'il est ouvert (écouteur posé d'abord : rien ne se perd).
+    api.storage.session.onChanged.addListener((changes) => {
+      const p = changes[PENDING_KEY]?.newValue as PendingQuery | undefined;
+      if (p) handlePending(p);
+    });
+    // Requête déposée juste avant l'ouverture du panneau ; sinon (ouverture par
+    // l'icône), accueil et main au champ de saisie.
+    try {
+      const items = await api.storage.session.get(PENDING_KEY);
       const p = items[PENDING_KEY] as PendingQuery | undefined;
       if (p && Date.now() - p.at < PENDING_MAX_AGE_MS) handlePending(p);
       else if (!currentRun && !lastPendingAt) {
         showWelcome();
         search.focus();
       }
-    },
-    () => showWelcome(),
-  );
-} else {
-  showWelcome();
+    } catch {
+      showWelcome();
+    }
+  } else {
+    showWelcome();
+  }
 }
+void start();
 
 document.getElementById('info-open')!.addEventListener('click', () => (info.visible ? info.hide() : void info.show()));
 

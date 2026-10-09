@@ -61,6 +61,14 @@
         border: none; border-radius: 10px; background: var(--accent); color: #fff;
       }
       .search-row > button:hover { background: var(--accent-dark); }
+      .countries { display: flex; gap: 6px; margin-bottom: 8px; }
+      .countries button {
+        display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 6px; cursor: pointer;
+        border: 1px solid var(--border); border-radius: 999px; background: #fff; color: var(--muted); font-size: 12px;
+      }
+      .countries button[aria-checked='true'] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+      .flag-icon { width: 18px; height: 12px; flex: none; border-radius: 2px; }
+      .place-head .flag { margin-left: auto; display: inline-flex; }
       .suggestions {
         position: absolute; z-index: 30; left: 0; right: 0; margin: 4px 0 0; padding: 4px; list-style: none;
         background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
@@ -177,6 +185,7 @@
       .hint { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
       .hint .icon { width: 13px; height: 13px; color: #f2a900; vertical-align: -2px; }
       #info h3 + p.hint { margin-top: 0; }
+      #info h3.next { margin-top: 14px; }
       #version { margin: 12px 2px 0; font-size: 11px; color: var(--muted); }
       .link { padding: 0; border: none; background: none; color: var(--accent); cursor: pointer; text-decoration: underline; font-size: inherit; }
       .card-option { font-size: 12.5px; }
@@ -203,10 +212,14 @@
           <rect x="5.4" y="18.9" width="3.8" height="7.7" rx="0.8" fill="#fff" /><rect x="11.2" y="14.8" width="3.8" height="11.8" rx="0.8" fill="#fff" />
           <rect x="17" y="10.7" width="3.8" height="15.9" rx="0.8" fill="#fff" /><rect x="22.7" y="6.6" width="3.8" height="20" rx="0.8" fill="#fff" />
         </svg>
-        <div><strong>Vérifier la couverture réseau</strong><small>4G et 5G · données Arcep</small></div>
+        <div><strong>Vérifier la couverture réseau</strong><small>4G et 5G · données publiques</small></div>
         <button id="info-open" class="icon-btn" type="button" title="Infos et sources" aria-label="Infos et sources">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 11v5.5M12 7.5h.01" /></svg>
         </button>
+      </div>
+      <div id="countries" class="countries" role="radiogroup" aria-label="Pays de la recherche">
+        <button type="button" role="radio" data-country="fr" aria-checked="true"><svg class="flag-icon" viewBox="0 0 18 12" aria-hidden="true"><rect width="6" height="12" fill="#0055a4"/><rect x="6" width="6" height="12" fill="#fff"/><rect x="12" width="6" height="12" fill="#ef4135"/><rect width="18" height="12" rx="1.5" fill="none" stroke="rgba(0,0,0,.15)"/></svg>France</button>
+        <button type="button" role="radio" data-country="es" aria-checked="false"><svg class="flag-icon" viewBox="0 0 18 12" aria-hidden="true"><rect width="18" height="12" fill="#aa151b"/><rect y="3" width="18" height="6" fill="#f1bf00"/><rect width="18" height="12" rx="1.5" fill="none" stroke="rgba(0,0,0,.15)"/></svg>Espagne</button>
       </div>
       <form id="search" role="search" autocomplete="off">
         <div class="search-row">

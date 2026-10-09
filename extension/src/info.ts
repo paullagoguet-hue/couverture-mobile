@@ -4,7 +4,7 @@
  * Affichée à la place du résultat, qui reste intact derrière (mini-carte
  * comprise) : « Retour » le réaffiche tel quel.
  */
-import { STATUS_COLORS, type Manifest, type StatusKind } from '@couverture/core';
+import { STATUS_COLORS, type CountryCode, type Manifest, type StatusKind } from '@couverture/core';
 
 import { PRIVACY_URL } from './config.ts';
 import { ICONS } from './illustrations.ts';
@@ -24,9 +24,9 @@ export class InfoPage {
   private section = document.getElementById('info')!;
   private content = document.getElementById('info-content')!;
   private result = document.getElementById('result')!;
-  private getManifest: () => Promise<Manifest>;
+  private getManifest: (country: CountryCode) => Promise<Manifest>;
 
-  constructor(getManifest: () => Promise<Manifest>) {
+  constructor(getManifest: (country: CountryCode) => Promise<Manifest>) {
     this.getManifest = getManifest;
     this.section.querySelector('.back')!.addEventListener('click', () => this.hide());
   }
@@ -36,17 +36,14 @@ export class InfoPage {
   }
 
   async show() {
-    this.content.innerHTML = this.render(null);
+    this.content.innerHTML = this.render({});
     this.result.hidden = true;
     this.section.hidden = false;
     window.scrollTo(0, 0);
-    // Dates des données : depuis le manifeste (déjà en cache après une recherche).
-    try {
-      const manifest = await this.getManifest();
-      if (this.visible) this.content.innerHTML = this.render(manifest);
-    } catch {
-      // Hors ligne : la page s'affiche sans les dates.
-    }
+    // Dates des données : depuis les manifestes (déjà en cache après une recherche).
+    // Hors ligne, la page s'affiche sans les dates.
+    const [fr, es] = await Promise.all((['fr', 'es'] as const).map((c) => this.getManifest(c).catch(() => undefined)));
+    if (this.visible) this.content.innerHTML = this.render({ fr, es });
   }
 
   hide() {
@@ -54,13 +51,16 @@ export class InfoPage {
     this.result.hidden = false;
   }
 
-  private render(manifest: Manifest | null): string {
-    // La 4G et la 5G ne sont pas publiées au même trimestre.
-    const dates = ['4g', '5g']
-      .map((t) => manifest?.layers.find((l) => l.techno === t))
-      .filter((l) => l !== undefined)
-      .map((l) => `${l.techno.toUpperCase()} au ${formatDate(l.date)}`)
-      .join(', ');
+  private render(manifests: Partial<Record<CountryCode, Manifest>>): string {
+    // La 4G et la 5G ne sont pas forcément publiées à la même date.
+    const dates = (manifest: Manifest | undefined, prefix: string) => {
+      const text = ['4g', '5g']
+        .map((t) => manifest?.layers.find((l) => l.techno === t))
+        .filter((l) => l !== undefined)
+        .map((l) => `${l.techno.toUpperCase()} ${prefix} ${formatDate(l.date)}`)
+        .join(', ');
+      return text ? ` (${text})` : '';
+    };
     return `
       <section class="card">
         <h3>Les couleurs</h3>
@@ -75,7 +75,7 @@ export class InfoPage {
         <ul class="facts">
           <li><strong>Adresse</strong> : à l'endroit exact.</li>
           <li><strong>Annonce sans adresse exacte</strong> : dans un rayon de 1 à 2 km.</li>
-          <li><strong>Commune</strong> : part des habitants couverts, là où ils vivent (les zones inhabitées ne comptent pas).</li>
+          <li><strong>Commune</strong> : en France, part des habitants couverts, là où ils vivent (les zones inhabitées ne comptent pas) ; en Espagne, au centre de la commune.</li>
         </ul>
       </section>
       <section class="card">
@@ -83,16 +83,22 @@ export class InfoPage {
         <ul class="facts">
           <li>Couverture <strong>théorique, en extérieur</strong> : à l'intérieur, le signal peut être plus faible.</li>
           <li>« 5G » inclut la bande 700 MHz, de longue portée mais au débit proche de la 4G.</li>
+          <li>Espagne : Digi et les opérateurs virtuels utilisent le réseau d'un des quatre opérateurs affichés.</li>
         </ul>
       </section>
       <section class="card">
-        <h3>Sources</h3>
+        <h3>Sources : France</h3>
         <ul class="facts">
-          <li>Couverture : Arcep, « Mon Réseau Mobile »${dates ? ` (${dates})` : ''}.</li>
+          <li>Couverture : Arcep, « Mon Réseau Mobile »${dates(manifests.fr, 'au')}.</li>
           <li>Population : Insee, Filosofi 2019 (carreaux de 200 m).</li>
           <li>Adresses et fond de carte : IGN, Géoplateforme.</li>
-          <li>Données publiques sous Licence Ouverte. Extension indépendante, non affiliée à ces organismes ni aux opérateurs.</li>
         </ul>
+        <h3 class="next">Sources : Espagne</h3>
+        <ul class="facts">
+          <li>Couverture : ministère pour la Transformation numérique, « Mapa de servicios de banda ancha »${dates(manifests.es, 'publiée le')}.</li>
+          <li>Adresses : CartoCiudad (IGN España). Fond de carte : OpenFreeMap, © OpenStreetMap.</li>
+        </ul>
+        <p class="hint">Données publiques. Frontières : © EuroGeographics. Extension indépendante, non affiliée à ces organismes ni aux opérateurs.</p>
       </section>
       <section class="card">
         <h3>Confidentialité</h3>

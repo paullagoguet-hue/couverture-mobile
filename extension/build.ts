@@ -24,17 +24,23 @@ const pkg = (await import('./package.json', { with: { type: 'json' } })).default
 
 const env = { ...loadEnv('production', root, 'VITE_'), ...process.env };
 const tilesBase = env.VITE_TILES_BASE_URL ?? 'http://127.0.0.1:5173/tiles/';
-const GEOCODER_ORIGIN = 'https://data.geopf.fr';
+/**
+ * Services contactés, en plus de l'hébergement des tuiles :
+ *  - data.geopf.fr : géocodage et fond de carte en France (IGN) ;
+ *  - www.cartociudad.es : géocodage en Espagne (IGN España) ;
+ *  - tiles.openfreemap.org : fond de carte hors de France (OpenStreetMap).
+ */
+const SERVICE_ORIGINS = ['https://data.geopf.fr', 'https://www.cartociudad.es', 'https://tiles.openfreemap.org'];
 
 /**
  * CSP des pages de l'extension. `connect-src` liste les SEULES origines que
- * l'extension peut contacter : le géocodeur IGN et l'hébergement des tuiles.
- * Aucune permission d'hôte n'est demandée : ces deux serveurs autorisent le CORS.
+ * l'extension peut contacter : les services ci-dessus et l'hébergement des tuiles.
+ * Aucune permission d'hôte n'est demandée : ces serveurs autorisent le CORS.
  */
 const csp = [
   "script-src 'self'",
   "object-src 'self'",
-  `connect-src ${GEOCODER_ORIGIN} ${new URL(tilesBase).origin}`,
+  `connect-src ${SERVICE_ORIGINS.join(' ')} ${new URL(tilesBase).origin}`,
 ].join('; ');
 
 /**

@@ -4,7 +4,8 @@
 *Éditeur : [nom ou raison sociale à compléter] — contact : [adresse e-mail à compléter]*
 
 L'extension « Vérifier la couverture réseau » affiche la couverture mobile
-théorique (données publiques de l'Arcep) à une adresse. Elle n'a pas de
+théorique (données publiques de l'Arcep en France, du ministère espagnol
+du Numérique en Espagne) à une adresse. Elle n'a pas de
 compte utilisateur, ne dépose pas de cookie, n'utilise aucun outil de mesure
 d'audience ni de pistage publicitaire, et ne vend ni ne partage aucune donnée.
 
@@ -32,8 +33,8 @@ vos identifiants, ni le contenu des autres pages.
 
 | Donnée | Destinataire | Finalité |
 |---|---|---|
-| Texte sélectionné, adresse saisie ou adresse lue sur la page | Service de géocodage de la Géoplateforme de l'IGN (`data.geopf.fr`) | Convertir l'adresse en position sur la carte |
-| Requêtes de fond de carte (zone affichée) | Géoplateforme de l'IGN (`data.geopf.fr`) | Afficher la mini-carte |
+| Texte sélectionné, adresse saisie ou adresse lue sur la page | Service de géocodage du pays recherché : Géoplateforme de l'IGN (`data.geopf.fr`) pour la France, CartoCiudad de l'IGN espagnol (`www.cartociudad.es`) pour l'Espagne | Convertir l'adresse en position sur la carte |
+| Requêtes de fond de carte (zone affichée) | Géoplateforme de l'IGN (`data.geopf.fr`) en France ; OpenFreeMap (`tiles.openfreemap.org`) en Espagne | Afficher la mini-carte |
 | Requêtes de tuiles de couverture (zone autour de l'adresse) | Hébergement des données de couverture : [domaine à compléter] | Lire la couverture à cet endroit |
 | Demande du contenu de l'encart publicitaire éventuel (texte et image), sans l'adresse recherchée | Même hébergement | Afficher l'encart sous le résultat |
 | Aucune donnée : seule l'ouverture du lien de l'encart, **si vous cliquez dessus** | Annonceur | Visite de son site |
@@ -41,7 +42,9 @@ vos identifiants, ni le contenu des autres pages.
 Ces requêtes sont envoyées directement depuis votre navigateur. Comme pour
 toute requête sur Internet, les serveurs destinataires reçoivent votre
 adresse IP et peuvent la conserver dans leurs journaux techniques selon leur
-propre politique : voir les [conditions générales de la Géoplateforme de l'IGN](https://cartes.gouv.fr/cgu/)
+propre politique : voir les [conditions générales de la Géoplateforme de l'IGN](https://cartes.gouv.fr/cgu/),
+l'[avis légal de CartoCiudad](https://www.cartociudad.es/web/portal/aviso-legal),
+la [politique d'OpenFreeMap](https://openfreemap.org/privacy)
 et [la politique de l'hébergeur à compléter]. L'éditeur de l'extension ne
 reçoit aucune de ces données.
 
@@ -68,17 +71,24 @@ serveur que les cartes, sans script publicitaire, sans cookie ni pistage, et
 sans transmettre l'adresse recherchée. L'annonceur ne reçoit rien tant que
 vous ne cliquez pas sur l'encart. La publicité n'a **aucune influence** sur
 les verdicts ni sur le classement des opérateurs, calculés uniquement à partir
-des données de l'Arcep.
+des données publiques de couverture.
 
 ## Sources des données affichées
 
-Couverture mobile théorique : Arcep, « Mon Réseau Mobile » (Licence Ouverte).
-Population : Insee, Filosofi 2019, données carroyées (Licence Ouverte).
-Géocodage et fond de carte : IGN, Géoplateforme.
+France : couverture mobile théorique de l'Arcep, « Mon Réseau Mobile » (Licence Ouverte) ;
+population de l'Insee, Filosofi 2019, données carroyées (Licence Ouverte) ; géocodage et
+fond de carte de l'IGN, Géoplateforme.
+
+Espagne : couverture mobile du ministère pour la Transformation numérique, « Mapa de
+servicios de banda ancha » ; géocodage CartoCiudad (IGN España) ; fond de carte
+OpenFreeMap, © contributeurs OpenStreetMap.
+
+Frontières (pour reconnaître le pays d'une annonce) : Eurostat GISCO, © EuroGeographics.
+
 Les résultats sont des estimations théoriques, en extérieur, fournies sans garantie.
 
 ## Vos droits
 
 L'éditeur ne détenant aucune donnée vous concernant, il n'a rien à vous
 communiquer, rectifier ou effacer. Pour toute question : [contact à compléter].
-Pour les données traitées par l'IGN ou l'hébergeur, adressez-vous à eux.
+Pour les données traitées par les services cités plus haut ou l'hébergeur, adressez-vous à eux.

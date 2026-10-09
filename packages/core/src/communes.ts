@@ -31,21 +31,21 @@ const cache = new Map<string, Promise<DepartmentFile | null>>();
 
 /** Charge la couverture d'une commune ; null si les données ne sont pas publiées. */
 export async function loadCommuneCoverage(tilesBaseUrl: string, citycode: string, signal?: AbortSignal): Promise<CommuneCoverage | null> {
-  const dept = departmentOf(citycode);
-  if (!cache.has(dept)) {
-    const url = new URL(`communes/${dept}.json`, tilesBaseUrl);
+  // Clé = URL du fichier : chaque pays a son dossier (le « 28 » français n'est pas le « 28 » espagnol).
+  const url = new URL(`communes/${departmentOf(citycode)}.json`, tilesBaseUrl).href;
+  if (!cache.has(url)) {
     cache.set(
-      dept,
+      url,
       // Téléchargement partagé : indépendant du signal de la recherche (cf. async.ts).
       fetch(url, { signal: AbortSignal.timeout(SHARED_FETCH_TIMEOUT_MS) })
         .then((r) => (r.ok ? (r.json() as Promise<DepartmentFile>) : null))
         .catch(() => {
-          cache.delete(dept); // erreur réseau : on retentera
+          cache.delete(url); // erreur réseau : on retentera
           return null;
         }),
     );
   }
-  const file = await abortable(cache.get(dept)!, signal);
+  const file = await abortable(cache.get(url)!, signal);
   const entry = file?.communes[citycode];
   if (!entry) return null;
   const { nom, hab, base, ...rest } = entry;

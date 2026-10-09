@@ -15,7 +15,7 @@ figurent que dans les justifications de permissions, lues par les relecteurs.
 **Nom** (45 caractères max.) : `Vérifier la couverture réseau`
 
 **Résumé** (132 caractères max., 119 ici) :
-> Couverture 4G et 5G des quatre opérateurs à une adresse, d'après les cartes publiques de l'Arcep. Un clic, sans compte.
+> Couverture 4G et 5G des opérateurs à une adresse, en France et en Espagne, d'après les cartes officielles. Sans compte.
 
 **Description** :
 
@@ -26,7 +26,7 @@ figurent que dans les justifications de permissions, lues par les relecteurs.
 > • Ou cliquez sur l'icône et tapez une adresse ou un nom de commune.
 > • Sur les pages d'annonces des principaux sites de réservation d'hébergements et d'annonces immobilières, l'icône devient orange : un clic suffit pour vérifier la connexion du logement. En option, un encadré peut aussi vous le proposer directement sur la page.
 >
-> **Un verdict clair pour chaque opérateur** (Orange, SFR, Bouygues Telecom, Free Mobile)
+> **Un verdict clair pour chaque opérateur** : Orange, SFR, Bouygues Telecom et Free Mobile en France ; Movistar, Vodafone, Orange et Yoigo en Espagne.
 > 🟢 5G partout · 🟡 5G sur une partie · 🟠 4G · 🔴 4G faible ou pas de réseau
 > Le meilleur opérateur est mis en avant, avec une mini-carte et un lien vers la carte complète.
 >
@@ -38,9 +38,9 @@ figurent que dans les justifications de permissions, lues par les relecteurs.
 > **Respect de votre vie privée**
 > L'extension ne lit pas les pages que vous visitez : elle n'utilise que le texte que vous sélectionnez, ce que vous tapez ou, à votre clic, l'adresse publiée par l'annonce. Pas de compte, pas de pistage, pas de mesure d'audience. Un éventuel encart publicitaire, clairement signalé et placé sous le résultat, ne piste pas et n'influence jamais les verdicts ni le classement.
 >
-> **Sources** : cartes de couverture théorique de l'Arcep (« Mon Réseau Mobile »), population Insee, géocodage et fond de carte IGN (Géoplateforme). Données publiques sous Licence Ouverte. Couverture théorique extérieure, à titre indicatif.
+> **Sources** : France : cartes de couverture théorique de l'Arcep (« Mon Réseau Mobile »), population Insee, géocodage et fond de carte IGN (Géoplateforme). Espagne : carte des services haut débit du ministère pour la Transformation numérique, géocodage CartoCiudad, fond de carte OpenStreetMap. Couverture théorique extérieure, à titre indicatif.
 >
-> Extension indépendante, non affiliée à l'Arcep, à l'IGN, aux opérateurs ni aux sites d'annonces.
+> Extension indépendante, non affiliée aux organismes cités, aux opérateurs ni aux sites d'annonces.
 
 **Catégorie** : Chrome « Outils » (ou « Voyages ») · AMO « Recherche et outils » / « Voyages ».
 **Langue** : français.
@@ -76,11 +76,11 @@ figurent que dans les justifications de permissions, lues par les relecteurs.
 | `activeTab` | Après un clic de l'utilisateur sur l'icône ou le menu, lire la localisation publiée par l'annonce de l'onglet actif. Aucun accès sans clic. |
 | `scripting` | Exécuter, dans l'onglet actif et à la demande de l'utilisateur seulement, la fonction qui lit la localisation publiée (données structurées schema.org). |
 | `declarativeContent` | Colorer l'icône sur les pages d'annonces reconnues ; la comparaison d'adresse est faite par le navigateur, l'extension ne lit pas l'URL. |
-| Accès aux sites (scripts de contenu) | Afficher, sur les seules pages d'annonces des sites suivants, un encadré proposant la vérification, uniquement si l'utilisateur a activé cette option dans le panneau (désactivée par défaut) : booking.com, expedia (.fr .com .be .ca .ch), hotels.com, tripadvisor (.fr .com .be .ch .ca), airbnb (.fr .com .be .ch .ca), gites-de-france.com, leboncoin.fr (annonces immobilières), pap.fr, bienici.com, seloger.com. Le script n'affiche que l'encadré ; la page n'est lue qu'au clic sur « Vérifier ». |
+| Accès aux sites (scripts de contenu) | Afficher, sur les seules pages d'annonces des sites suivants, un encadré proposant la vérification, uniquement si l'utilisateur a activé cette option dans le panneau (désactivée par défaut) : booking.com, expedia (.fr .com .be .ca .ch .es), hotels.com, tripadvisor (.fr .com .be .ch .ca .es), airbnb (.fr .com .be .ch .ca .es), gites-de-france.com, leboncoin.fr (annonces immobilières), pap.fr, bienici.com, seloger.com. Le script n'affiche que l'encadré ; la page n'est lue qu'au clic sur « Vérifier ». |
 | Code distant | Aucun : tout le code est dans le paquet. |
 
 **Données utilisateur** (cases à cocher) :
-- Contenu de sites web : **oui** (texte sélectionné ou adresse de l'annonce, envoyés au géocodeur de l'IGN pour obtenir une position).
+- Contenu de sites web : **oui** (texte sélectionné ou adresse de l'annonce, envoyés au géocodeur public du pays, IGN ou CartoCiudad, pour obtenir une position).
 - Localisation : **oui** (position du lieu recherché, déductible des tuiles de carte demandées).
 - Toutes les autres catégories : non.
 - Certifications : pas de vente, pas d'usage sans rapport avec l'objectif unique, pas d'usage pour du crédit.

@@ -6,3 +6,4 @@ export * from './ranking.ts';
 export * from './communes.ts';
 export * from './status.ts';
 export * from './async.ts';
+export * from './countries.ts';
