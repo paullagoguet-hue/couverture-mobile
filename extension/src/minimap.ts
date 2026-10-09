@@ -29,6 +29,7 @@ const BASEMAPS: Record<CountryCode, { style: string; attribution: string }> = {
   fr: { style: 'https://data.geopf.fr/annexes/ressources/vectorTiles/styles/PLAN.IGN/gris.json', attribution: '© Arcep' },
   es: { style: 'https://tiles.openfreemap.org/styles/positron', attribution: '© Ministerio para la Transformación Digital' },
   pt: { style: 'https://tiles.openfreemap.org/styles/positron', attribution: '© ANACOM' },
+  be: { style: 'https://tiles.openfreemap.org/styles/positron', attribution: '© IBPT-BIPT' },
 };
 
 setWorkerUrl(maplibreWorkerUrl);

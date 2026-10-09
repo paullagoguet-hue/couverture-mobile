@@ -136,3 +136,26 @@ TIM, Vodafone (fusionné avec Fastweb, groupe Swisscom), WindTre (CK Hutchison),
 | Portugal | oui | oui, par classes | non (service seulement) | prochain candidat |
 | Italie | non (nombre) | non | sur demande | version allégée possible |
 | Suisse | non (nombre) | non | oui | version allégée possible |
+
+## Tour d'horizon (octobre 2026)
+
+| Pays | Données par opérateur | État | Raison |
+|---|---|---|---|
+| Espagne | oui (ministère) | **construit** | — |
+| Portugal | oui + débit (ANACOM) | **construit** | reconstitution des images du service, validée point par point |
+| Belgique | oui + 3 niveaux de signal (IBPT, WFS) | **construit** | téléchargement direct, licence CC BY à confirmer |
+| Allemagne | oui (BNetzA, tuiles par opérateur) | en attente | licence CC BY-ND : reconstituer = adapter, interdit sans accord |
+| États-Unis | oui (FCC, hexagones H3 par opérateur et État) | faisable, gros chantier | volume (4 opérateurs × 50 États), géocodeur US à prévoir |
+| Royaume-Uni | oui (Ofcom, API par adresse) | faisable avec serveur | clé d'API personnelle + relais pour la cacher |
+| Irlande | carte ComReg seulement | non | pas de données téléchargeables |
+| Pays-Bas | rien d'officiel par opérateur | non | aucune carte publique du régulateur |
+| Canada | cartes globales (CRTC) | non | pas de détail par opérateur exploitable |
+| Brésil | % par commune (Anatel) | non (pour l'instant) | pas de carte fine |
+| Mexique | carte participative (Ookla via IFT) | non | données privées, pas de téléchargement |
+| Argentine | rien | non | ENACOM ne publie pas par opérateur |
+| Italie, Suisse | nombre d'opérateurs seulement | version allégée possible | — |
+
+Géocodage : Photon public (komoot) saturé par nos tests (blocage temporaire de
+l'adresse IP) : pour la production, un géocodeur Photon auto-hébergé (données
+OpenStreetMap du monde entier) remplacera Photon public, et pourra servir tous
+les pays sans géocodeur national ouvert.

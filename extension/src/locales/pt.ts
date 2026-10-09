@@ -3,7 +3,7 @@ import type { Messages } from '../i18n.ts';
 
 const pt: Messages = {
   extName: 'Verificar a cobertura móvel',
-  extDescription: 'Cobertura 4G e 5G dos operadores em qualquer morada em França, Espanha e Portugal, segundo os mapas oficiais.',
+  extDescription: 'Cobertura 4G e 5G dos operadores em qualquer morada, em França e noutros países da Europa, segundo os mapas oficiais.',
   menuSelection: 'Verificar a cobertura móvel',
   menuPage: 'Verificar a rede deste alojamento',
 
@@ -17,7 +17,7 @@ const pt: Messages = {
   submit: 'Verificar',
 
   welcomeTitle: 'O seu telemóvel vai ter rede?',
-  welcomeLead: 'O 4G e o 5G dos operadores, em França, Espanha e Portugal.',
+  welcomeLead: 'O 4G e o 5G dos operadores, em qualquer morada.',
   stepType: 'Escreva uma morada',
   stepSelect: 'Ou selecione-a numa página',
   stepSelectHint: 'e clique com o botão direito',
@@ -84,7 +84,7 @@ const pt: Messages = {
   approxNote: 'O site não publica a morada exata',
   communeOnly: 'O site só publica a localidade',
   countryNotCovered: 'País não abrangido',
-  coversCountries: 'A extensão abrange França, Espanha e Portugal.',
+  coversCountries: 'Países abrangidos: {countries}.',
 
   back: '← Voltar',
   infoColors: 'As cores',
@@ -97,8 +97,7 @@ const pt: Messages = {
   infoZone: 'A zona avaliada',
   zoneAddress: '<strong>Morada</strong>: no ponto exato.',
   zoneListing: '<strong>Anúncio sem morada exata</strong>: num raio de 1 a 2 km.',
-  zoneCommune:
-    '<strong>Localidade</strong>: em França, percentagem de habitantes cobertos onde vivem (as zonas desabitadas não contam); em Espanha e Portugal, no centro da localidade.',
+  zoneCommune: '<strong>Localidade</strong>: em França, percentagem de habitantes cobertos onde vivem (as zonas desabitadas não contam); nos outros países, no centro da localidade.',
   infoNotes: 'A saber',
   noteTheoretical: 'Cobertura <strong>teórica, no exterior</strong>: no interior, o sinal pode ser mais fraco.',
   note700: '«5G» inclui a banda dos 700 MHz: longo alcance, mas velocidades próximas do 4G.',
@@ -131,6 +130,9 @@ const pt: Messages = {
   cardClose: 'Fechar',
   cardUpdated: 'A extensão foi atualizada: recarregue a página para verificar este alojamento.',
   cardReady: 'Resultado pronto: clique no ícone laranja da extensão, na barra de endereço.',
+  sourcesFor: 'Fontes: {country}',
+  srcCoverage: 'Cobertura: {source}{dates}.',
+  srcAddressesMaps: 'Moradas: {geocoder}. Mapa de base: {basemap}.',
 };
 
 export default pt;

@@ -3,7 +3,7 @@ import type { Messages } from '../i18n.ts';
 
 const nl: Messages = {
   extName: 'Mobiele dekking controleren',
-  extDescription: '4G- en 5G-dekking van alle providers op elk adres in Frankrijk, Spanje en Portugal, volgens officiële kaarten.',
+  extDescription: '4G- en 5G-dekking van alle providers op elk adres, in Frankrijk en elders in Europa, volgens officiële kaarten.',
   menuSelection: 'Mobiele dekking controleren',
   menuPage: 'Mobiel bereik van deze accommodatie controleren',
 
@@ -17,7 +17,7 @@ const nl: Messages = {
   submit: 'Controleren',
 
   welcomeTitle: 'Heeft je telefoon daar bereik?',
-  welcomeLead: '4G en 5G van alle providers, in Frankrijk, Spanje en Portugal.',
+  welcomeLead: '4G en 5G van alle providers, op elk adres.',
   stepType: 'Typ een adres',
   stepSelect: 'Of selecteer het op een pagina',
   stepSelectHint: 'en klik met rechts',
@@ -84,7 +84,7 @@ const nl: Messages = {
   approxNote: 'De site publiceert het exacte adres niet',
   communeOnly: 'De site publiceert alleen de plaats',
   countryNotCovered: 'Land niet gedekt',
-  coversCountries: 'De extensie dekt Frankrijk, Spanje en Portugal.',
+  coversCountries: 'Gedekte landen: {countries}.',
 
   back: '← Terug',
   infoColors: 'De kleuren',
@@ -97,8 +97,7 @@ const nl: Messages = {
   infoZone: 'Gecontroleerd gebied',
   zoneAddress: '<strong>Adres</strong>: op de exacte plek.',
   zoneListing: '<strong>Advertentie zonder exact adres</strong>: binnen 1 tot 2 km.',
-  zoneCommune:
-    '<strong>Plaats</strong>: in Frankrijk het aandeel inwoners met dekking waar ze wonen (onbewoonde gebieden tellen niet mee); in Spanje en Portugal in het centrum van de plaats.',
+  zoneCommune: '<strong>Plaats</strong>: in Frankrijk het aandeel inwoners met dekking waar ze wonen (onbewoonde gebieden tellen niet mee); elders in het centrum van de plaats.',
   infoNotes: 'Goed om te weten',
   noteTheoretical: '<strong>Theoretische dekking buiten</strong>: binnen kan het signaal zwakker zijn.',
   note700: '‘5G’ omvat de 700 MHz-band: groot bereik, maar snelheden dicht bij 4G.',
@@ -131,6 +130,9 @@ const nl: Messages = {
   cardClose: 'Sluiten',
   cardUpdated: 'De extensie is bijgewerkt: herlaad de pagina om deze accommodatie te controleren.',
   cardReady: 'Resultaat klaar: klik op het oranje pictogram van de extensie in de adresbalk.',
+  sourcesFor: 'Bronnen: {country}',
+  srcCoverage: 'Dekking: {source}{dates}.',
+  srcAddressesMaps: 'Adressen: {geocoder}. Basiskaart: {basemap}.',
 };
 
 export default nl;

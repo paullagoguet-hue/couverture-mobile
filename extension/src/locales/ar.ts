@@ -3,7 +3,7 @@ import type { Messages } from '../i18n.ts';
 
 const ar: Messages = {
   extName: 'التحقق من تغطية الهاتف المحمول',
-  extDescription: 'تغطية 4G و5G لجميع المشغلين في أي عنوان في فرنسا وإسبانيا والبرتغال، وفق الخرائط الرسمية. دون حساب.',
+  extDescription: 'تغطية 4G و5G لجميع المشغلين في أي عنوان، في فرنسا وبلدان أوروبية أخرى، وفق الخرائط الرسمية.',
   menuSelection: 'التحقق من تغطية الهاتف المحمول',
   menuPage: 'التحقق من إشارة الهاتف في هذا السكن',
 
@@ -17,7 +17,7 @@ const ar: Messages = {
   submit: 'تحقق',
 
   welcomeTitle: 'هل سيلتقط هاتفك الإشارة هناك؟',
-  welcomeLead: 'شبكات 4G و5G لجميع المشغلين في فرنسا وإسبانيا والبرتغال.',
+  welcomeLead: 'شبكات 4G و5G لجميع المشغلين، في أي عنوان.',
   stepType: 'اكتب عنوانًا',
   stepSelect: 'أو حدّده في صفحة',
   stepSelectHint: 'ثم انقر بزر الفأرة الأيمن',
@@ -84,7 +84,7 @@ const ar: Messages = {
   approxNote: 'لا ينشر الموقع العنوان الدقيق',
   communeOnly: 'ينشر الموقع اسم البلدة فقط',
   countryNotCovered: 'البلد غير مشمول',
-  coversCountries: 'تغطي الإضافة فرنسا وإسبانيا والبرتغال.',
+  coversCountries: 'البلدان المشمولة: {countries}.',
 
   back: '→ رجوع',
   infoColors: 'الألوان',
@@ -97,8 +97,7 @@ const ar: Messages = {
   infoZone: 'المنطقة المقيَّمة',
   zoneAddress: '<strong>العنوان</strong>: في الموقع الدقيق.',
   zoneListing: '<strong>إعلان دون عنوان دقيق</strong>: ضمن دائرة نصف قطرها 1 إلى 2 كم.',
-  zoneCommune:
-    '<strong>البلدة</strong>: في فرنسا، نسبة السكان المغطّين حيث يقيمون (لا تُحتسب المناطق غير المأهولة)؛ وفي إسبانيا والبرتغال، في وسط البلدة.',
+  zoneCommune: '<strong>البلدة</strong>: في فرنسا، نسبة السكان المغطّين حيث يقيمون (لا تُحتسب المناطق غير المأهولة)؛ وفي البلدان الأخرى، في وسط البلدة.',
   infoNotes: 'معلومات مفيدة',
   noteTheoretical: 'تغطية <strong>نظرية في الهواء الطلق</strong>: قد تكون الإشارة أضعف داخل المباني.',
   note700: 'تشمل «5G» نطاق 700 ميغاهرتز: مدى بعيد، لكن بسرعات قريبة من 4G.',
@@ -131,6 +130,9 @@ const ar: Messages = {
   cardClose: 'إغلاق',
   cardUpdated: 'تم تحديث الإضافة: أعد تحميل الصفحة للتحقق من هذا السكن.',
   cardReady: 'النتيجة جاهزة: انقر على الأيقونة البرتقالية للإضافة في شريط العنوان.',
+  sourcesFor: 'المصادر: {country}',
+  srcCoverage: 'التغطية: {source}{dates}.',
+  srcAddressesMaps: 'العناوين: {geocoder}. الخريطة الأساسية: {basemap}.',
 };
 
 export default ar;

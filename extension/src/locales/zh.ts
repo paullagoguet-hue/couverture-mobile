@@ -3,7 +3,7 @@ import type { Messages } from '../i18n.ts';
 
 const zh: Messages = {
   extName: '查询手机信号覆盖',
-  extDescription: '根据官方地图，查询法国、西班牙和葡萄牙任意地址的各运营商 4G 和 5G 覆盖。无需注册。',
+  extDescription: '根据官方地图，查询法国及欧洲其他国家任意地址的各运营商 4G 和 5G 覆盖。',
   menuSelection: '查询手机信号覆盖',
   menuPage: '查询此住宿的手机信号',
 
@@ -17,7 +17,7 @@ const zh: Messages = {
   submit: '查询',
 
   welcomeTitle: '你的手机在那里有信号吗？',
-  welcomeLead: '法国、西班牙和葡萄牙各运营商的 4G 和 5G。',
+  welcomeLead: '任意地址的各运营商 4G 和 5G 覆盖。',
   stepType: '输入地址',
   stepSelect: '或在网页上选中地址',
   stepSelectHint: '然后点击右键',
@@ -84,7 +84,7 @@ const zh: Messages = {
   approxNote: '该网站未公布确切地址',
   communeOnly: '该网站只公布城镇',
   countryNotCovered: '不支持该国家',
-  coversCountries: '本扩展支持法国、西班牙和葡萄牙。',
+  coversCountries: '支持的国家：{countries}。',
 
   back: '← 返回',
   infoColors: '颜色说明',
@@ -97,7 +97,7 @@ const zh: Messages = {
   infoZone: '查询范围',
   zoneAddress: '<strong>地址</strong>：精确位置。',
   zoneListing: '<strong>无确切地址的房源</strong>：1 至 2 公里范围内。',
-  zoneCommune: '<strong>城镇</strong>：法国按居民所在位置计算覆盖比例（无人区不计）；西班牙和葡萄牙按城镇中心计算。',
+  zoneCommune: '<strong>城镇</strong>：法国按居民所在位置计算覆盖比例（无人区不计）；其他国家按城镇中心计算。',
   infoNotes: '注意事项',
   noteTheoretical: '<strong>理论覆盖，室外</strong>：室内信号可能较弱。',
   note700: '“5G”包括 700 MHz 频段：覆盖远，但速度接近 4G。',
@@ -130,6 +130,9 @@ const zh: Messages = {
   cardClose: '关闭',
   cardUpdated: '扩展已更新：请刷新页面后再查询此住宿。',
   cardReady: '结果已就绪：点击地址栏中扩展的橙色图标查看。',
+  sourcesFor: '来源：{country}',
+  srcCoverage: '覆盖：{source}{dates}。',
+  srcAddressesMaps: '地址：{geocoder}。底图：{basemap}。',
 };
 
 export default zh;

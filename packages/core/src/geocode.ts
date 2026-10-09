@@ -3,8 +3,8 @@
  *  - France : Géoplateforme de l'IGN (Base Adresse Nationale),
  *    https://data.geopf.fr/geocodage (l'ancienne API api-adresse.data.gouv.fr y redirige) ;
  *  - Espagne : CartoCiudad (IGN espagnol / CNIG), https://www.cartociudad.es/geocoder ;
- *  - Portugal : Photon (komoot, données OpenStreetMap), https://photon.komoot.io,
- *    faute de géocodeur public portugais ouvert ; réponses limitées au Portugal.
+ *  - Portugal, Belgique : Photon (komoot, données OpenStreetMap), https://photon.komoot.io,
+ *    faute de géocodeur public national ouvert et sans clé ; réponses limitées au pays.
  * Tous gratuits, sans clé et ouverts aux appels depuis le navigateur (CORS).
  */
 import type { CountryCode } from './countries.ts';
@@ -45,7 +45,15 @@ export function normalizeQuery(text: string): string | null {
 }
 
 export function geocode(text: string, options: GeocodeOptions = {}): Promise<GeocodeResult[]> {
-  return options.country === 'es' ? geocodeEs(text, options) : options.country === 'pt' ? geocodePt(text, options) : geocodeFr(text, options);
+  switch (options.country) {
+    case 'es':
+      return geocodeEs(text, options);
+    case 'pt':
+    case 'be':
+      return geocodePhoton(text, options.country, options);
+    default:
+      return geocodeFr(text, options);
+  }
 }
 
 async function geocodeFr(
@@ -102,9 +110,17 @@ const esLabel = (address: unknown) =>
   [...new Set(String(address).split(',').map((part) => titleCase(part.trim())).filter(Boolean))].join(', ');
 
 /** La commune du résultat est-elle écrite dans la requête (« … Madrid » → Madrid, pas Las Rozas de Madrid) ? */
-/** Le nom (commune…) figure-t-il comme mot entier dans le texte déjà normalisé (fold) ? */
+/**
+ * Le nom (commune…) figure-t-il comme mot entier dans le texte déjà normalisé (fold) ?
+ * Noms bilingues (« Bruxelles - Brussel », « Alacant/Alicante ») : une des formes suffit.
+ */
 const nameInText = (name: unknown, foldedText: string) =>
-  !!name && new RegExp(`(^|[^\\p{L}])${fold(String(name)).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}])`, 'u').test(foldedText);
+  !!name &&
+  String(name)
+    .split(/\s+-\s+|\/|\s*\(/)
+    .map((part) => fold(part.replace(/\)$/, '').trim()))
+    .filter(Boolean)
+    .some((part) => new RegExp(`(^|[^\\p{L}])${part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}])`, 'u').test(foldedText));
 
 const muniInQuery = (r: any, foldedQuery: string) => nameInText(r.muni, foldedQuery);
 
@@ -177,26 +193,26 @@ async function geocodeEs(text: string, { limit = 5, signal, fetchFn = fetch }: G
   });
 }
 
-// --- Portugal : Photon (OpenStreetMap) ------------------------------------------
+// --- Portugal, Belgique : Photon (OpenStreetMap) -------------------------------
 
-/** Emprise du Portugal, Açores et Madère comprises (les réponses sont ensuite filtrées sur le pays). */
-const PT_BBOX = '-31.6,32.3,-6.1,42.2';
+/** Emprise de chaque pays (Açores et Madère comprises) ; les réponses sont ensuite filtrées sur le pays. */
+const PHOTON_BBOX: Partial<Record<CountryCode, string>> = { pt: '-31.6,32.3,-6.1,42.2', be: '2.5,49.45,6.45,51.55' };
 
 /** Types Photon → types communs (ville = commune ; village, hameau… = lieu-dit). */
 const PT_TYPES: Record<string, ResultType> = { house: 'housenumber', street: 'street', city: 'municipality', town: 'municipality' };
 
-async function geocodePt(text: string, { limit = 5, signal, fetchFn = fetch }: GeocodeOptions): Promise<GeocodeResult[]> {
-  const q = normalizeQuery(text.replace(/,?\s*Portugal\s*$/i, ''));
+async function geocodePhoton(text: string, country: 'pt' | 'be', { limit = 5, signal, fetchFn = fetch }: GeocodeOptions): Promise<GeocodeResult[]> {
+  const q = normalizeQuery(text.replace(/,?\s*(Portugal|Belgique|Belgium|België|Belgie|Belgien)\s*$/i, ''));
   if (!q) return [];
   const url = new URL(PHOTON_URL);
   url.searchParams.set('q', q);
   url.searchParams.set('limit', String(limit * 2)); // une partie peut tomber hors du Portugal
   url.searchParams.set('lang', 'default'); // noms locaux
-  url.searchParams.set('bbox', PT_BBOX);
+  url.searchParams.set('bbox', PHOTON_BBOX[country]!);
   const resp = await fetchFn(url, { signal });
   if (!resp.ok) throw new Error(`Géocodage indisponible (${resp.status})`);
   const json = await resp.json();
-  const features: any[] = (json.features ?? []).filter((f: any) => f.properties?.countrycode === 'PT');
+  const features: any[] = (json.features ?? []).filter((f: any) => f.properties?.countrycode === country.toUpperCase());
   // Adresse avec numéro : un résultat « maison » d'abord, s'il y en a un.
   if (/\d/.test(q)) {
     const house = features.findIndex((f) => f.properties.type === 'house');
@@ -217,7 +233,7 @@ async function geocodePt(text: string, { limit = 5, signal, fetchFn = fetch }: G
       citycode: '',
       city: town,
       context: [...new Set([town, p.county, p.state].filter(Boolean))].join(', '),
-      country: 'pt' as const,
+      country,
     };
   });
 }
@@ -274,7 +290,7 @@ export async function suggestAddresses(
   { limit = 5, country = 'fr', signal, fetchFn = fetch }: Omit<GeocodeOptions, 'autocomplete'> = {},
 ): Promise<GeocodeResult[]> {
   if (country === 'es') return geocodeEs(text, { limit, signal, fetchFn });
-  if (country === 'pt') return geocodePt(text, { limit, signal, fetchFn });
+  if (country === 'pt' || country === 'be') return geocodePhoton(text, country, { limit, signal, fetchFn });
   const q = normalizeQuery(text);
   if (!q) return [];
   const words = q.split(' ');
@@ -315,39 +331,50 @@ const PORTUGUESE_HINT = /(^|[\s,])(rua|travessa|largo|praça|praca|estrada|beco|
  *     une commune avant un hameau ; s'il existe dans plusieurs pays (« Porto »),
  *     on propose le choix ;
  *  2. puis un indice de langue (« calle », « rua », « España »…) ;
- *  3. puis le français s'il est sûr de lui (score ≥ 0,6) ;
+ *  3. la Belgique si la commune écrite est belge (et pas française), puis le
+ *     français s'il est sûr de lui (score ≥ 0,6) ;
  *  4. puis le pays dont la première réponse est dans la commune écrite ;
- *  5. sinon l'espagnol, le portugais, à défaut le français.
+ *  5. sinon l'espagnol, le portugais, le belge, à défaut le français.
  */
+/** Délai par géocodeur dans geocodeAnyCountry. */
+const ANY_COUNTRY_TIMEOUT_MS = 6000;
+
 export async function geocodeAnyCountry(
   text: string,
   { limit = 5, signal, fetchFn = fetch }: Omit<GeocodeOptions, 'country' | 'autocomplete'> = {},
 ): Promise<GeocodeResult[]> {
+  // Chaque géocodeur a son propre délai : un service lent ou indisponible est
+  // ignoré (aucune réponse) au lieu de bloquer la recherche dans tous les pays.
+  const each = () => AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(ANY_COUNTRY_TIMEOUT_MS)]);
   const settled = await Promise.allSettled([
-    geocodeFr(text, { limit, signal, fetchFn }),
-    geocodeEs(text, { limit, signal, fetchFn }),
-    geocodePt(text, { limit, signal, fetchFn }),
+    geocodeFr(text, { limit, signal: each(), fetchFn }),
+    geocodeEs(text, { limit, signal: each(), fetchFn }),
+    geocodePhoton(text, 'pt', { limit, signal: each(), fetchFn }),
+    geocodePhoton(text, 'be', { limit, signal: each(), fetchFn }),
   ]);
+  if (signal?.aborted) throw signal.reason;
   if (settled.every((s) => s.status === 'rejected')) throw (settled[0] as PromiseRejectedResult).reason;
-  const [fr, es, pt] = settled.map((s) => (s.status === 'fulfilled' ? s.value : []));
-  const by: Record<CountryCode, GeocodeResult[]> = { fr, es, pt };
+  const [fr, es, pt, be] = settled.map((s) => (s.status === 'fulfilled' ? s.value : []));
+  const by: Record<CountryCode, GeocodeResult[]> = { fr, es, pt, be };
 
   const wanted = fold(text.replace(/\s+/g, ' ').trim());
   const isPlaceNamed = (r: GeocodeResult) => (r.type === 'municipality' || r.type === 'locality') && fold(r.label.split(',')[0].trim()) === wanted;
   // Une commune de ce nom l'emporte sur un hameau homonyme ailleurs (« Funchal » : Madère, pas Tui).
   const isMunicipality = (r: GeocodeResult) => isPlaceNamed(r) && r.type === 'municipality';
   for (const match of [isMunicipality, isPlaceNamed]) {
-    const exact = (['fr', 'es', 'pt'] as const).filter((c) => by[c].some(match));
+    const exact = (['fr', 'es', 'pt', 'be'] as const).filter((c) => by[c].some(match));
     if (exact.length === 1) return by[exact[0]];
     if (exact.length > 1) return exact.map((c) => ({ ...by[c].find(match)!, score: 0.9 })); // « Porto » : au choix
   }
 
   if (es.length && SPANISH_HINT.test(text)) return es;
   if (pt.length && PORTUGUESE_HINT.test(text)) return pt;
-  if (fr.length && fr[0].score >= 0.6) return fr;
   const foldedText = fold(text);
   const cityWritten = (r: GeocodeResult | undefined) => nameInText(r?.city, foldedText);
+  // Belgique avant le score français : « Rue de la Loi 16, Bruxelles » existe aussi en France.
+  if (cityWritten(be[0]) && !cityWritten(fr[0])) return be;
+  if (fr.length && fr[0].score >= 0.6) return fr;
   if (cityWritten(es[0])) return es;
   if (cityWritten(pt[0])) return pt;
-  return es.length ? es : pt.length ? pt : fr;
+  return es.length ? es : pt.length ? pt : be.length ? be : fr;
 }

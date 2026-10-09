@@ -1,3 +1,5 @@
+import type { CountryCode } from '@couverture/core';
+
 /**
  * Illustrations et pictogrammes du panneau, en SVG intégré (aucun fichier ni
  * requête externe). Constantes uniquement : insérées telles quelles.
@@ -65,7 +67,8 @@ export const ICONS = {
 };
 
 /** Drapeaux simplifiés (les émojis drapeaux ne s'affichent pas sous Windows). */
-export const FLAGS: Record<'fr' | 'es' | 'pt', string> = {
+export const FLAGS: Record<CountryCode, string> = {
+  be: `<svg class="flag-icon" viewBox="0 0 18 12" aria-hidden="true"><rect width="6" height="12" fill="#1a1a1a"/><rect x="6" width="6" height="12" fill="#fdda24"/><rect x="12" width="6" height="12" fill="#ef3340"/><rect width="18" height="12" rx="1.5" fill="none" stroke="rgba(0,0,0,.15)"/></svg>`,
   fr: `<svg class="flag-icon" viewBox="0 0 18 12" aria-hidden="true"><rect width="6" height="12" fill="#0055a4"/><rect x="6" width="6" height="12" fill="#fff"/><rect x="12" width="6" height="12" fill="#ef4135"/><rect width="18" height="12" rx="1.5" fill="none" stroke="rgba(0,0,0,.15)"/></svg>`,
   pt: `<svg class="flag-icon" viewBox="0 0 18 12" aria-hidden="true"><rect width="18" height="12" fill="#da291c"/><rect width="7.2" height="12" fill="#046a38"/><circle cx="7.2" cy="6" r="2.3" fill="#ffe900" stroke="#da291c" stroke-width=".6"/><rect width="18" height="12" rx="1.5" fill="none" stroke="rgba(0,0,0,.15)"/></svg>`,
   es: `<svg class="flag-icon" viewBox="0 0 18 12" aria-hidden="true"><rect width="18" height="12" fill="#aa151b"/><rect y="3" width="18" height="6" fill="#f1bf00"/><rect width="18" height="12" rx="1.5" fill="none" stroke="rgba(0,0,0,.15)"/></svg>`,

@@ -64,8 +64,19 @@ let currentRun: AbortController | undefined;
 let country: CountryCode = 'fr';
 const COUNTRY_KEY = 'country';
 
-/** Nom du pays dans la langue de l'interface. */
-const countryName = (c: CountryCode) => t(`country_${c}`);
+/** Nom du pays dans la langue de l'interface (fourni par le navigateur). */
+const countryName = (c: CountryCode) => new Intl.DisplayNames([locale()], { type: 'region' }).of(c.toUpperCase()) ?? c;
+
+/** Liste des pays couverts, dans la langue (« France, Espagne et Portugal »). */
+const countriesList = () => new Intl.ListFormat(locale(), { type: 'conjunction' }).format(COUNTRY_CODES.map(countryName));
+
+/** Producteur des données, cité sous chaque résultat (nom propre, non traduit). */
+const PRODUCERS: Record<CountryCode, string> = {
+  fr: 'Arcep',
+  es: 'Ministerio para la Transformación Digital',
+  pt: 'ANACOM',
+  be: 'IBPT-BIPT',
+};
 
 const readers = new Map<CountryCode, CoverageReader>();
 const manifests = new Map<CountryCode, Promise<Manifest>>();
@@ -93,6 +104,9 @@ function getManifest(c: CountryCode): Promise<Manifest> {
 }
 
 const info = new InfoPage(getManifest);
+
+/** Délai max d'une recherche d'adresse : au-delà, message d'erreur plutôt qu'attente. */
+const GEOCODE_TIMEOUT_MS = 10_000;
 
 /** Délai max pour lire la couverture (manifeste + tuiles des 8 couches). */
 const COVERAGE_TIMEOUT_MS = 20_000;
@@ -153,14 +167,24 @@ function message(o: { icon: string; title: string; body: string; error?: boolean
 
 // --- Pays ---------------------------------------------------------------------
 
-const countryButtons = [...document.querySelectorAll<HTMLButtonElement>('#countries button')];
-countryButtons.forEach((b) => {
-  const c = b.dataset.country as CountryCode;
+/** SVG constant -> élément (sans innerHTML). */
+const svgElement = (svg: string) => document.importNode(new DOMParser().parseFromString(svg, 'image/svg+xml').documentElement, true);
+
+/** Un bouton par pays du cœur : ajouter un pays n'impose pas de toucher au HTML. */
+const countryButtons = COUNTRY_CODES.map((c) => {
+  const b = Object.assign(document.createElement('button'), { type: 'button' });
+  b.setAttribute('role', 'radio');
+  b.dataset.country = c;
+  b.append(svgElement(FLAGS[c]), Object.assign(document.createElement('span'), { className: 'country-name' }));
   b.addEventListener('click', () => {
     setCountry(c);
     search.focus();
   });
+  document.getElementById('countries')!.append(b);
+  return b;
 });
+/** Noms des pays, une fois la langue connue. */
+const labelCountryButtons = () => countryButtons.forEach((b) => (b.querySelector('.country-name')!.textContent = countryName(b.dataset.country as CountryCode)));
 
 /** Change le pays de la saisie (boutons, ou résultat trouvé dans un autre pays). */
 function setCountry(c: CountryCode, remember = true) {
@@ -179,6 +203,7 @@ const EXAMPLES: [string, CountryCode][] = [
   ['Bonneval-sur-Arc', 'fr'],
   ['Calle Mayor 1, Madrid', 'es'],
   ['Rua Augusta 100, Lisboa', 'pt'],
+  ['Rue Neuve 1, Bruxelles', 'be'],
 ];
 
 /** Accueil : explication, trois façons de vérifier, exemples. */
@@ -188,6 +213,7 @@ function showWelcome() {
     ${HERO_SVG}
     <h2>${t('welcomeTitle')}</h2>
     <p class="lead">${t('welcomeLead')}</p>
+    <p class="lead">${escapeHtml(t('coversCountries', { countries: countriesList() }))}</p>
     <div class="card">
       <ul class="steps">
         <li><span class="bubble">${ICONS.search}</span><div><strong>${t('stepType')}</strong></div></li>
@@ -233,7 +259,7 @@ async function run(text: string, options: RunOptions = {}) {
   try {
     const results = anyCountry
       ? await geocodeAnyCountry(text, { limit: 5, signal: r.signal })
-      : await geocode(text, { limit: 5, country: where, signal: r.signal });
+      : await geocode(text, { limit: 5, country: where, signal: AbortSignal.any([r.signal, AbortSignal.timeout(GEOCODE_TIMEOUT_MS)]) });
     if (r.signal.aborted) return;
     if (!results.length) {
       message(
@@ -391,7 +417,7 @@ function renderCoverage(place: GeocodeResult, manifest: Manifest, coverage: Laye
       <div id="minimap-slot"></div>
       ${fullMap ? `<p class="map-actions"><a id="full-map" class="btn" target="_blank" rel="noopener">${t('fullMap')} ${ICONS.arrow}</a></p>` : ''}
     </section>
-    <p class="source">${t('sourceLine', { source: t(`source_${c}`) })} · <button type="button" class="link" data-info>${t('infoLink')}</button></p>
+    <p class="source">${t('sourceLine', { source: PRODUCERS[c] })} · <button type="button" class="link" data-info>${t('infoLink')}</button></p>
     <div id="encart-slot"></div>`,
     r.note,
   );
@@ -507,7 +533,7 @@ function handlePending(p: PendingQuery) {
           {
             icon: ICONS.pin,
             title: t('countryNotCovered'),
-            body: `<p>${t('coversCountries')}</p>`,
+            body: `<p>${escapeHtml(t('coversCountries', { countries: countriesList() }))}</p>`,
           },
           note,
         );
@@ -524,7 +550,7 @@ function handlePending(p: PendingQuery) {
       const published = countryFromText(p.country);
       if (published === 'other') {
         currentRun?.abort();
-        message({ icon: ICONS.pin, title: t('countryNotCovered'), body: `<p>${t('coversCountries')}</p>` }, note);
+        message({ icon: ICONS.pin, title: t('countryNotCovered'), body: `<p>${escapeHtml(t('coversCountries', { countries: countriesList() }))}</p>` }, note);
         return;
       }
       if (published) setCountry(published);
@@ -547,6 +573,7 @@ async function start() {
   // Langue choisie (ou du navigateur) avant tout affichage ; ?lang=en pour les tests.
   await initLang(params.get('lang'));
   translatePage();
+  labelCountryButtons();
   setupLanguageSelect();
 
   try {

@@ -30,7 +30,7 @@ export const LANG_KEY = 'lang';
 const fr = {
   // Nom, menus, icône
   extName: 'Vérifier la couverture réseau',
-  extDescription: "Couverture 4G et 5G des opérateurs à une adresse en France, en Espagne et au Portugal, d'après les cartes officielles.",
+  extDescription: "Couverture 4G et 5G des opérateurs à une adresse, en France et ailleurs en Europe, d'après les cartes officielles.",
   menuSelection: 'Vérifier la couverture réseau',
   menuPage: 'Vérifier la connexion de ce logement',
 
@@ -46,7 +46,7 @@ const fr = {
 
   // Accueil
   welcomeTitle: 'Votre téléphone captera-t-il ?',
-  welcomeLead: 'La 4G et la 5G des opérateurs, en France, en Espagne et au Portugal.',
+  welcomeLead: "La 4G et la 5G des opérateurs, à n'importe quelle adresse.",
   stepType: 'Tapez une adresse',
   stepSelect: 'Ou sélectionnez-la sur une page',
   stepSelectHint: 'puis clic droit',
@@ -117,7 +117,7 @@ const fr = {
   approxNote: 'Adresse exacte non publiée par le site',
   communeOnly: 'Seule la commune est publiée par le site',
   countryNotCovered: 'Pays non couvert',
-  coversCountries: "L'extension couvre la France, l'Espagne et le Portugal.",
+  coversCountries: 'Pays couverts : {countries}.',
 
   // Page Infos
   back: '← Retour',
@@ -131,8 +131,7 @@ const fr = {
   infoZone: 'La zone évaluée',
   zoneAddress: "<strong>Adresse</strong> : à l'endroit exact.",
   zoneListing: '<strong>Annonce sans adresse exacte</strong> : dans un rayon de 1 à 2 km.',
-  zoneCommune:
-    '<strong>Commune</strong> : en France, part des habitants couverts, là où ils vivent (les zones inhabitées ne comptent pas) ; en Espagne et au Portugal, au centre de la commune.',
+  zoneCommune: '<strong>Commune</strong> : en France, part des habitants couverts, là où ils vivent (les zones inhabitées ne comptent pas) ; ailleurs, au centre de la commune.',
   infoNotes: 'À savoir',
   noteTheoretical: "Couverture <strong>théorique, en extérieur</strong> : à l'intérieur, le signal peut être plus faible.",
   note700: '« 5G » inclut la bande 700 MHz, de longue portée mais au débit proche de la 4G.',
@@ -166,6 +165,9 @@ const fr = {
   cardClose: 'Fermer',
   cardUpdated: "L'extension a été mise à jour : rechargez la page pour vérifier ce logement.",
   cardReady: "Résultat prêt : cliquez sur l'icône orange de l'extension, dans la barre d'adresse, pour l'afficher.",
+  sourcesFor: 'Sources : {country}',
+  srcCoverage: 'Couverture : {source}{dates}.',
+  srcAddressesMaps: 'Adresses : {geocoder}. Fond de carte : {basemap}.',
 };
 
 export type MessageKey = keyof typeof fr;
@@ -173,7 +175,7 @@ export type Messages = Record<MessageKey, string>;
 
 const en: Messages = {
   extName: 'Check Mobile Coverage',
-  extDescription: '4G and 5G coverage from every operator at any address in France, Spain and Portugal, from official maps.',
+  extDescription: '4G and 5G coverage from every operator at any address, in France and elsewhere in Europe, from official maps.',
   menuSelection: 'Check mobile coverage',
   menuPage: 'Check the mobile signal of this rental',
 
@@ -187,7 +189,7 @@ const en: Messages = {
   submit: 'Check',
 
   welcomeTitle: 'Will your phone get a signal?',
-  welcomeLead: '4G and 5G from every operator, in France, Spain and Portugal.',
+  welcomeLead: '4G and 5G from every operator, at any address.',
   stepType: 'Type an address',
   stepSelect: 'Or select it on a page',
   stepSelectHint: 'then right-click',
@@ -254,7 +256,7 @@ const en: Messages = {
   approxNote: 'The site does not publish the exact address',
   communeOnly: 'The site only publishes the town',
   countryNotCovered: 'Country not covered',
-  coversCountries: 'The extension covers France, Spain and Portugal.',
+  coversCountries: 'Countries covered: {countries}.',
 
   back: '← Back',
   infoColors: 'Colours',
@@ -267,8 +269,7 @@ const en: Messages = {
   infoZone: 'Area checked',
   zoneAddress: '<strong>Address</strong>: at the exact spot.',
   zoneListing: '<strong>Listing without an exact address</strong>: within 1 to 2 km.',
-  zoneCommune:
-    '<strong>Town</strong>: in France, the share of residents covered where they live (uninhabited areas do not count); in Spain and Portugal, at the town centre.',
+  zoneCommune: '<strong>Town</strong>: in France, the share of residents covered where they live (uninhabited areas do not count); elsewhere, at the town centre.',
   infoNotes: 'Good to know',
   noteTheoretical: '<strong>Theoretical, outdoor</strong> coverage: the signal may be weaker indoors.',
   note700: '“5G” includes the 700 MHz band: long range, but speeds close to 4G.',
@@ -301,11 +302,14 @@ const en: Messages = {
   cardClose: 'Close',
   cardUpdated: 'The extension was updated: reload the page to check this rental.',
   cardReady: 'Result ready: click the orange extension icon in the address bar to see it.',
+  sourcesFor: 'Sources: {country}',
+  srcCoverage: 'Coverage: {source}{dates}.',
+  srcAddressesMaps: 'Addresses: {geocoder}. Base map: {basemap}.',
 };
 
 const es: Messages = {
   extName: 'Comprobar la cobertura móvil',
-  extDescription: 'Cobertura 4G y 5G de los operadores en cualquier dirección de Francia, España y Portugal, según los mapas oficiales.',
+  extDescription: 'Cobertura 4G y 5G de los operadores en cualquier dirección, en Francia y otros países de Europa, según los mapas oficiales.',
   menuSelection: 'Comprobar la cobertura móvil',
   menuPage: 'Comprobar la cobertura de este alojamiento',
 
@@ -319,7 +323,7 @@ const es: Messages = {
   submit: 'Comprobar',
 
   welcomeTitle: '¿Tendrá cobertura tu móvil?',
-  welcomeLead: 'El 4G y el 5G de los operadores, en Francia, España y Portugal.',
+  welcomeLead: 'El 4G y el 5G de los operadores, en cualquier dirección.',
   stepType: 'Escribe una dirección',
   stepSelect: 'O selecciónala en una página',
   stepSelectHint: 'y haz clic derecho',
@@ -386,7 +390,7 @@ const es: Messages = {
   approxNote: 'El sitio no publica la dirección exacta',
   communeOnly: 'El sitio solo publica el municipio',
   countryNotCovered: 'País no disponible',
-  coversCountries: 'La extensión cubre Francia, España y Portugal.',
+  coversCountries: 'Países cubiertos: {countries}.',
 
   back: '← Volver',
   infoColors: 'Los colores',
@@ -399,8 +403,7 @@ const es: Messages = {
   infoZone: 'La zona evaluada',
   zoneAddress: '<strong>Dirección</strong>: en el punto exacto.',
   zoneListing: '<strong>Anuncio sin dirección exacta</strong>: en un radio de 1 a 2 km.',
-  zoneCommune:
-    '<strong>Municipio</strong>: en Francia, porcentaje de habitantes con cobertura donde viven (las zonas deshabitadas no cuentan); en España y Portugal, en el centro del municipio.',
+  zoneCommune: '<strong>Municipio</strong>: en Francia, porcentaje de habitantes con cobertura donde viven (las zonas deshabitadas no cuentan); en otros países, en el centro del municipio.',
   infoNotes: 'A tener en cuenta',
   noteTheoretical: 'Cobertura <strong>teórica, en exteriores</strong>: en interiores la señal puede ser más débil.',
   note700: '«5G» incluye la banda de 700 MHz, de largo alcance pero con velocidades cercanas al 4G.',
@@ -433,11 +436,14 @@ const es: Messages = {
   cardClose: 'Cerrar',
   cardUpdated: 'La extensión se ha actualizado: recarga la página para comprobar este alojamiento.',
   cardReady: 'Resultado listo: haz clic en el icono naranja de la extensión, en la barra de direcciones, para verlo.',
+  sourcesFor: 'Fuentes: {country}',
+  srcCoverage: 'Cobertura: {source}{dates}.',
+  srcAddressesMaps: 'Direcciones: {geocoder}. Mapa base: {basemap}.',
 };
 
 const de: Messages = {
   extName: 'Mobilfunkabdeckung prüfen',
-  extDescription: '4G- und 5G-Abdeckung aller Netzbetreiber an jeder Adresse in Frankreich, Spanien und Portugal, nach amtlichen Karten.',
+  extDescription: '4G- und 5G-Abdeckung aller Netzbetreiber an jeder Adresse, in Frankreich und anderen Ländern Europas, nach amtlichen Karten.',
   menuSelection: 'Mobilfunkabdeckung prüfen',
   menuPage: 'Mobilfunkempfang dieser Unterkunft prüfen',
 
@@ -451,7 +457,7 @@ const de: Messages = {
   submit: 'Prüfen',
 
   welcomeTitle: 'Hat Ihr Handy dort Empfang?',
-  welcomeLead: '4G und 5G aller Netzbetreiber, in Frankreich, Spanien und Portugal.',
+  welcomeLead: '4G und 5G aller Netzbetreiber, an jeder Adresse.',
   stepType: 'Adresse eingeben',
   stepSelect: 'Oder auf einer Seite markieren',
   stepSelectHint: 'dann Rechtsklick',
@@ -518,7 +524,7 @@ const de: Messages = {
   approxNote: 'Die Seite veröffentlicht die genaue Adresse nicht',
   communeOnly: 'Die Seite veröffentlicht nur den Ort',
   countryNotCovered: 'Land nicht abgedeckt',
-  coversCountries: 'Die Erweiterung deckt Frankreich, Spanien und Portugal ab.',
+  coversCountries: 'Abgedeckte Länder: {countries}.',
 
   back: '← Zurück',
   infoColors: 'Die Farben',
@@ -531,8 +537,7 @@ const de: Messages = {
   infoZone: 'Geprüfter Bereich',
   zoneAddress: '<strong>Adresse</strong>: genau an diesem Punkt.',
   zoneListing: '<strong>Angebot ohne genaue Adresse</strong>: im Umkreis von 1 bis 2 km.',
-  zoneCommune:
-    '<strong>Gemeinde</strong>: in Frankreich der Anteil der versorgten Einwohner an ihrem Wohnort (unbewohnte Gebiete zählen nicht); in Spanien und Portugal im Ortszentrum.',
+  zoneCommune: '<strong>Gemeinde</strong>: in Frankreich der Anteil der versorgten Einwohner an ihrem Wohnort (unbewohnte Gebiete zählen nicht); anderswo im Ortszentrum.',
   infoNotes: 'Gut zu wissen',
   noteTheoretical: '<strong>Theoretische Abdeckung im Freien</strong>: in Gebäuden kann das Signal schwächer sein.',
   note700: '„5G“ umfasst das 700-MHz-Band: große Reichweite, aber Geschwindigkeiten nahe an 4G.',
@@ -565,11 +570,14 @@ const de: Messages = {
   cardClose: 'Schließen',
   cardUpdated: 'Die Erweiterung wurde aktualisiert: Laden Sie die Seite neu, um diese Unterkunft zu prüfen.',
   cardReady: 'Ergebnis bereit: Klicken Sie auf das orange Symbol der Erweiterung in der Adressleiste.',
+  sourcesFor: 'Quellen: {country}',
+  srcCoverage: 'Abdeckung: {source}{dates}.',
+  srcAddressesMaps: 'Adressen: {geocoder}. Grundkarte: {basemap}.',
 };
 
 const it: Messages = {
   extName: 'Verifica copertura mobile',
-  extDescription: 'Copertura 4G e 5G degli operatori a qualsiasi indirizzo in Francia, Spagna e Portogallo, dalle mappe ufficiali.',
+  extDescription: 'Copertura 4G e 5G degli operatori a qualsiasi indirizzo, in Francia e altrove in Europa, dalle mappe ufficiali.',
   menuSelection: 'Verifica la copertura mobile',
   menuPage: 'Verifica il segnale di questo alloggio',
 
@@ -583,7 +591,7 @@ const it: Messages = {
   submit: 'Verifica',
 
   welcomeTitle: 'Il tuo telefono avrà campo?',
-  welcomeLead: 'Il 4G e il 5G degli operatori, in Francia, Spagna e Portogallo.',
+  welcomeLead: 'Il 4G e il 5G degli operatori, a qualsiasi indirizzo.',
   stepType: 'Scrivi un indirizzo',
   stepSelect: 'Oppure selezionalo in una pagina',
   stepSelectHint: 'poi clic destro',
@@ -650,7 +658,7 @@ const it: Messages = {
   approxNote: "Il sito non pubblica l'indirizzo esatto",
   communeOnly: 'Il sito pubblica solo il comune',
   countryNotCovered: 'Paese non coperto',
-  coversCountries: "L'estensione copre Francia, Spagna e Portogallo.",
+  coversCountries: 'Paesi coperti: {countries}.',
 
   back: '← Indietro',
   infoColors: 'I colori',
@@ -663,8 +671,7 @@ const it: Messages = {
   infoZone: 'La zona valutata',
   zoneAddress: '<strong>Indirizzo</strong>: nel punto esatto.',
   zoneListing: '<strong>Annuncio senza indirizzo esatto</strong>: entro 1-2 km.',
-  zoneCommune:
-    "<strong>Comune</strong>: in Francia, quota di abitanti coperti dove vivono (le zone disabitate non contano); in Spagna e Portogallo, al centro del comune.",
+  zoneCommune: '<strong>Comune</strong>: in Francia, quota di abitanti coperti dove vivono (le zone disabitate non contano); altrove, al centro del comune.',
   infoNotes: 'Da sapere',
   noteTheoretical: "Copertura <strong>teorica, all'aperto</strong>: al chiuso il segnale può essere più debole.",
   note700: '«5G» include la banda 700 MHz: lunga portata, ma velocità vicine al 4G.',
@@ -697,6 +704,9 @@ const it: Messages = {
   cardClose: 'Chiudi',
   cardUpdated: "L'estensione è stata aggiornata: ricarica la pagina per verificare questo alloggio.",
   cardReady: "Risultato pronto: clicca sull'icona arancione dell'estensione, nella barra degli indirizzi.",
+  sourcesFor: 'Fonti: {country}',
+  srcCoverage: 'Copertura: {source}{dates}.',
+  srcAddressesMaps: 'Indirizzi: {geocoder}. Mappa di base: {basemap}.',
 };
 
 const MESSAGES: Record<Lang, Messages> = { fr, en, es, de, it, pt: ptPT, nl, ru, zh, ar };

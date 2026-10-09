@@ -7,8 +7,10 @@
 import { STATUS_COLORS, type CountryCode, type Manifest, type StatusKind } from '@couverture/core';
 
 import { PRIVACY_URL } from './config.ts';
-import { formatDate, t, type MessageKey } from './i18n.ts';
+import { formatDate, locale, t, type MessageKey } from './i18n.ts';
 import { ICONS } from './illustrations.ts';
+
+const regionName = (c: CountryCode) => new Intl.DisplayNames([locale()], { type: 'region' }).of(c.toUpperCase()) ?? c;
 
 /** Couleur, libellé du badge, explication. */
 const LEGEND: [StatusKind, MessageKey, MessageKey][] = [
@@ -41,8 +43,8 @@ export class InfoPage {
     window.scrollTo(0, 0);
     // Dates des données : depuis les manifestes (déjà en cache après une recherche).
     // Hors ligne, la page s'affiche sans les dates.
-    const [fr, es, pt] = await Promise.all((['fr', 'es', 'pt'] as const).map((c) => this.getManifest(c).catch(() => undefined)));
-    if (this.visible) this.content.innerHTML = this.render({ fr, es, pt });
+    const [fr, es, pt, be] = await Promise.all((['fr', 'es', 'pt', 'be'] as const).map((c) => this.getManifest(c).catch(() => undefined)));
+    if (this.visible) this.content.innerHTML = this.render({ fr, es, pt, be });
   }
 
   hide() {
@@ -101,6 +103,11 @@ export class InfoPage {
         <ul class="facts">
           <li>${t('srcPtCoverage', { dates: dates(manifests.pt, 'dateAt') })}</li>
           <li>${t('srcPtMaps')}</li>
+        </ul>
+        <h3 class="next">${t('sourcesFor', { country: regionName('be') })}</h3>
+        <ul class="facts">
+          <li>${t('srcCoverage', { source: 'IBPT-BIPT, « Atlas mobile »', dates: '' })}</li>
+          <li>${t('srcAddressesMaps', { geocoder: 'Photon (komoot), © OpenStreetMap', basemap: 'OpenFreeMap, © OpenStreetMap' })}</li>
         </ul>
         <p class="hint">${t('srcFooter')}</p>
       </section>

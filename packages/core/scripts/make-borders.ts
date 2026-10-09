@@ -22,6 +22,7 @@ const COUNTRIES: Record<string, { id: string; bbox?: [number, number, number, nu
   fr: { id: 'FR', bbox: [-6, 41, 10, 52] },
   es: { id: 'ES' },
   pt: { id: 'PT' },
+  be: { id: 'BE' },
   ad: { id: 'AD' },
 };
 const TOLERANCE = 0.0003; // degrés (~30 m)
